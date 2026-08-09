@@ -31,7 +31,7 @@ with EiffelStudio and Gobo Eiffel.
 Add `tomelle` to an Eiffel project as a Git submodule:
 
 ```console
-git submodule add https://github.com/OWNER/tomelle.git vendor/tomelle
+git submodule add https://github.com/samedit66/tomelle.git vendor/tomelle
 git submodule update --init --recursive
 ```
 
@@ -41,7 +41,6 @@ Reference the library from the consuming project's ECF file:
 <library name="tomelle" location="./vendor/tomelle/tomelle.ecf" readonly="true"/>
 ```
 
-Replace the repository URL with the final project URL when it is published.
 
 ## Usage
 
