@@ -47,22 +47,6 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Install Gobo Eiffel libraries
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive="$RUNNER_TEMP/gobo.tar.xz"
-          distribution="$RUNNER_TEMP/gobo-distribution"
-          url='https://github.com/gobo-eiffel/gobo/releases/download/gobo-26.06/gobo-linux-x86_64-26.06.30%2Bae3f1ee.tar.xz'
-          curl --fail --location --silent --show-error "$url" --output "$archive"
-          echo 'd7d27a115863ac822024fd6968097c11af515e0eae46147cb053a48a7aa040d8  '"$archive" | sha256sum --check
-          mkdir -p "$distribution"
-          tar -xJf "$archive" -C "$distribution"
-          gec_path=$(find "$distribution" -path '*/bin/gec' -print -quit)
-          test -n "$gec_path"
-          gobo_directory=$(dirname "$(dirname "$gec_path")")
-          echo "GOBO=$gobo_directory" >> "$GITHUB_ENV"
-
       - name: Install EiffelStudio 25.12
         shell: bash
         run: |

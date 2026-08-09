@@ -41,6 +41,10 @@ Reference the library from the consuming project's ECF file:
 <library name="tomelle" location="./vendor/tomelle/tomelle.ecf" readonly="true"/>
 ```
 
+The same ECF works with both supported compilers. EiffelStudio uses its Base
+library directly and does not require Gobo to be installed. Gobo Eiffel uses
+FreeELKS when `GOBO_EIFFEL=ge`, as set by the Gobo toolchain.
+
 
 ## Usage
 
