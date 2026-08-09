@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-23-0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-23-0 http://www.eiffel.com/developers/xml/configuration-1-23-0.xsd"
+    name="tomelle_conformance" uuid="B029DFF3-116B-42C0-8955-9562C26363D0">
+  <target name="common">
+    <library name="free_elks" location="$GOBO/library/free_elks/library.ecf" readonly="true"/>
+    <cluster name="tomelle" location="../src" recursive="true"/>
+    <cluster name="conformance" location="./"/>
+    <setting name="console_application" value="true"/>
+    <capability>
+      <concurrency use="none"/>
+      <void_safety support="all"/>
+    </capability>
+  </target>
+  <target name="toml_test_decoder" extends="common">
+    <root class="TOML_TEST_DECODER" feature="make"/>
+  </target>
+  <target name="toml_test_encoder" extends="common">
+    <root class="TOML_TEST_ENCODER" feature="make"/>
+  </target>
+</system>

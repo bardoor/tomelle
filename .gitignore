@@ -1,0 +1,8 @@
+/.gobo/
+/TESTGEN/
+/tomelle_tests
+/tests/compile.log
+/toml_test_decoder
+/toml_test_encoder
+/.cache/
+/EIFGENs/

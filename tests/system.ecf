@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<system
+    xmlns="http://www.eiffel.com/developers/xml/configuration-1-23-0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-23-0 http://www.eiffel.com/developers/xml/configuration-1-23-0.xsd"
+    name="tomelle_tests"
+    uuid="3D793DBA-CA05-41BA-909B-F84625390AB1"
+>
+  <target name="all_classes">
+    <root all_classes="true"/>
+    <library name="free_elks" location="$GOBO/library/free_elks/library_${GOBO_EIFFEL}.ecf" readonly="true"/>
+    <library name="test_skl" location="$GOBO/library/test/library_skl.ecf" readonly="true"/>
+    <cluster name="tomelle" location="../src" recursive="true"/>
+    <cluster name="tomelle_test_cases" location="./"/>
+  </target>
+  <target name="tomelle_tests" extends="all_classes">
+    <root class="TOMELLE_TESTS" feature="make"/>
+    <setting name="console_application" value="true"/>
+    <capability>
+      <concurrency use="none"/>
+    </capability>
+    <library name="regexp" location="$GOBO/library/regexp/library.ecf" readonly="true"/>
+    <cluster name="tomelle_testgen" location="../TESTGEN"/>
+  </target>
+</system>

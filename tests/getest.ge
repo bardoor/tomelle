@@ -1,0 +1,17 @@
+test
+
+	tomelle_tests
+
+default
+
+	class ("TEST_[A-Z0-9_]*")
+	feature ("test_[a-z0-9_]*")
+	testgen ("TESTGEN")
+	compile ("gec --finalize --target=tomelle_tests tests/system.ecf > tests/compile.log 2>&1")
+	execute ("./tomelle_tests")
+
+cluster
+
+	tomelle: "tests"
+
+end
