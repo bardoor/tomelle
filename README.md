@@ -13,6 +13,8 @@
 `tomelle` is a void-safe Eiffel library for reading and writing TOML. It works
 with EiffelStudio and Gobo Eiffel.
 
+[API overview](docs/api_overview.md)
+
 ## Features
 
 - Full TOML 1.1 decoder and encoder support. The library passes every case in
