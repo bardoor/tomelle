@@ -63,11 +63,26 @@ jobs:
           gobo_directory=$(dirname "$(dirname "$gec_path")")
           echo "GOBO=$gobo_directory" >> "$GITHUB_ENV"
 
-      - name: Install EiffelStudio
+      - name: Install EiffelStudio 25.12
+        shell: bash
         run: |
-          sudo add-apt-repository --yes ppa:eiffelstudio-team/ppa
-          sudo apt-get update
-          sudo apt-get install --yes eiffelstudio
+          set -euo pipefail
+          archive="$RUNNER_TEMP/eiffelstudio.tar.bz2"
+          distribution="$RUNNER_TEMP/eiffelstudio-distribution"
+          url='https://www.eiffel.com/cdn/EiffelStudio/25.12/98922/Eiffel_25.12_rev_98922-linux-x86-64.tar.bz2'
+          curl --fail --location --silent --show-error "$url" --output "$archive"
+          echo 'db26cd83844582b86293cd3b9a0caf7905e78619765724746dffa86bbdef9a6c  '"$archive" | sha256sum --check
+          mkdir -p "$distribution"
+          tar -xjf "$archive" -C "$distribution"
+          ec_path=$(find "$distribution" -path '*/studio/spec/linux-x86-64/bin/ec' -print -quit)
+          test -n "$ec_path"
+          eiffel_directory=${ec_path%/studio/spec/linux-x86-64/bin/ec}
+          echo "ISE_EIFFEL=$eiffel_directory" >> "$GITHUB_ENV"
+          echo 'ISE_PLATFORM=linux-x86-64' >> "$GITHUB_ENV"
+          echo "$(dirname "$ec_path")" >> "$GITHUB_PATH"
+          export ISE_EIFFEL="$eiffel_directory"
+          export ISE_PLATFORM=linux-x86-64
+          export PATH="$(dirname "$ec_path"):$PATH"
           ec -version
 
       - name: Compile and run with EiffelStudio
