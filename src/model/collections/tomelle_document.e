@@ -285,7 +285,7 @@ feature -- Comparison
             Result := root.is_equal (other.root)
         end
 
-feature {TOMELLE_PARSER, TOMELLE_DOCUMENT} -- Parser support
+feature {TOMELLE_PARSER, TOMELLE_CONTAINER_PARSER, TOMELLE_DOCUMENT_BUILDER, TOMELLE_DOCUMENT} -- Parser support
 
     set_root (a_root: TOMELLE_TABLE)
         do

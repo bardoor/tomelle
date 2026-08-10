@@ -4,7 +4,7 @@ note
 class
     TOMELLE_PARSE_ERROR
 
-create {TOMELLE_PARSER}
+create {TOMELLE_PARSER, TOMELLE_ERROR_COLLECTOR}
     make
 
 feature {NONE} -- Initialization
