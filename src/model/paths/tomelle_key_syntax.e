@@ -23,6 +23,7 @@ feature -- Validation
             l_expect_key, l_valid: BOOLEAN
             l_quote: CHARACTER_32
             l_digits, j: INTEGER
+            l_code: NATURAL_64
         do
             l_text := a_expression.as_string_32
             n := l_text.count
@@ -46,8 +47,16 @@ feature -- Validation
                                     if l_text [i] = 'u' then l_digits := 4 else l_digits := 8 end
                                     l_valid := i + l_digits <= n
                                     from j := i + 1 until j > i + l_digits or else not l_valid loop
-                                        l_valid := is_hex_character (l_text [j])
+                                        l_valid := syntax_rules.is_hex_character (l_text [j])
                                         j := j + 1
+                                    end
+                                    if l_valid then
+                                        l_code := 0
+                                        from j := 1 until j > l_digits loop
+                                            l_code := l_code * 16 + syntax_rules.hex_value (l_text [i + j]).to_natural_64
+                                            j := j + 1
+                                        end
+                                        l_valid := syntax_rules.is_unicode_scalar (l_code)
                                     end
                                     i := i + l_digits
                                 end
@@ -57,8 +66,8 @@ feature -- Validation
                         l_valid := l_valid and then i <= n and then l_text [i] = l_quote
                         i := i + 1
                     else
-                        l_valid := is_bare_key_character (l_text [i])
-                        from until i > n or else not is_bare_key_character (l_text [i]) loop
+                        l_valid := syntax_rules.is_bare_key_character (l_text [i])
+                        from until i > n or else not syntax_rules.is_bare_key_character (l_text [i]) loop
                             i := i + 1
                         end
                     end
@@ -77,10 +86,7 @@ feature {TOMELLE_PATH} -- Implementation
 
     is_bare_key_character (a_character: CHARACTER_32): BOOLEAN
         do
-            Result := ('a' <= a_character and a_character <= 'z') or else
-                ('A' <= a_character and a_character <= 'Z') or else
-                ('0' <= a_character and a_character <= '9') or else
-                a_character = '-' or else a_character = '_'
+            Result := syntax_rules.is_bare_key_character (a_character)
         end
 
     is_valid_escape (a_character: CHARACTER_32): BOOLEAN
@@ -93,9 +99,12 @@ feature {TOMELLE_PATH} -- Implementation
 
     is_hex_character (a_character: CHARACTER_32): BOOLEAN
         do
-            Result := ('0' <= a_character and a_character <= '9') or else
-                ('a' <= a_character and a_character <= 'f') or else
-                ('A' <= a_character and a_character <= 'F')
+            Result := syntax_rules.is_hex_character (a_character)
+        end
+
+    syntax_rules: TOMELLE_SYNTAX_RULES
+        once
+            create Result
         end
 
 end

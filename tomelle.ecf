@@ -20,12 +20,36 @@
         <custom name="GOBO_EIFFEL" value="ge"/>
       </condition>
     </library>
-    <cluster name="model_values" location="./src/model/values"/>
-    <cluster name="model_collections" location="./src/model/collections"/>
-    <cluster name="model_time" location="./src/model/time"/>
-    <cluster name="model_paths" location="./src/model/paths"/>
-    <cluster name="parsing" location="./src/parsing"/>
-    <cluster name="serialization" location="./src/serialization"/>
-    <cluster name="errors" location="./src/errors"/>
+    <cluster name="model_values" location="./src/model/values">
+      <visible class="TOMELLE_VALUE"/>
+      <visible class="TOMELLE_VALUE_FACTORY"/>
+    </cluster>
+    <cluster name="model_collections" location="./src/model/collections">
+      <visible class="TOMELLE_DOCUMENT"/>
+      <visible class="TOMELLE_ARRAY"/>
+      <visible class="TOMELLE_TABLE"/>
+    </cluster>
+    <cluster name="model_time" location="./src/model/time">
+      <visible class="TOMELLE_LOCAL_DATE"/>
+      <visible class="TOMELLE_LOCAL_TIME"/>
+      <visible class="TOMELLE_LOCAL_DATE_TIME"/>
+      <visible class="TOMELLE_OFFSET_DATE_TIME"/>
+    </cluster>
+    <cluster name="model_paths" location="./src/model/paths">
+      <visible class="TOMELLE_PATH"/>
+      <visible class="TOMELLE_KEY_SYNTAX"/>
+    </cluster>
+    <cluster name="parsing" location="./src/parsing">
+      <visible class="TOMELLE_PARSER"/>
+    </cluster>
+    <cluster name="serialization" location="./src/serialization">
+      <visible class="TOMELLE_WRITER"/>
+    </cluster>
+    <cluster name="errors" location="./src/errors">
+      <visible class="TOMELLE_ERROR_CODE"/>
+      <visible class="TOMELLE_PARSE_ERROR"/>
+      <visible class="TOMELLE_WRITE_ERROR"/>
+      <visible class="TOMELLE_SOURCE_POSITION"/>
+    </cluster>
   </target>
 </system>

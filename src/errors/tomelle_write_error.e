@@ -13,14 +13,27 @@ feature {NONE} -- Initialization
         require write_code: a_code.is_write_code
         do
             code := a_code
-            message := a_message.as_string_32.twin
-            target_name := a_target_name.as_string_32.twin
+            internal_message := a_message.as_string_32.twin
+            internal_target_name := a_target_name.as_string_32.twin
         end
 
 feature -- Access
 
     code: TOMELLE_ERROR_CODE
-    message: STRING_32
-    target_name: STRING_32
+
+    message: READABLE_STRING_32
+        do
+            Result := internal_message.twin
+        end
+
+    target_name: READABLE_STRING_32
+        do
+            Result := internal_target_name.twin
+        end
+
+feature {NONE} -- Storage
+
+    internal_message: STRING_32
+    internal_target_name: STRING_32
 
 end

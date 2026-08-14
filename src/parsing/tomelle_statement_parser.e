@@ -32,13 +32,25 @@ feature -- Parsing
                     l_expression := lexical.trimmed (l_content.substring (1, l_equal - 1))
                     l_value := lexical.substring (l_content, l_equal + 1, l_content.count)
                     if key_syntax.is_valid_expression (l_expression) then
-                        create {TOMELLE_KEY_VALUE_STATEMENT} Result.make (l_expression, l_value, a_line.position)
+                        create {TOMELLE_KEY_VALUE_STATEMENT} Result.make (l_expression, l_value,
+                            a_line.position, first_value_column (a_line.text))
                     end
                 end
             end
         end
 
 feature {NONE} -- Implementation
+
+    first_value_column (a_text: STRING_32): INTEGER
+        local
+            i: INTEGER
+        do
+            i := lexical.top_level_equal (a_text) + 1
+            from until i > a_text.count or else not a_text [i].is_space loop
+                i := i + 1
+            end
+            Result := i.max (1)
+        end
 
     lexical: TOMELLE_LEXICAL_TOOLS once create Result end
     key_syntax: TOMELLE_KEY_SYNTAX once create Result.make end

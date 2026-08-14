@@ -487,6 +487,13 @@ feature -- Typed access
         deferred
         end
 
+    as_float_text: READABLE_STRING_32
+            -- Compiler-independent canonical TOML spelling.
+        require
+            is_float: is_float
+        deferred
+        end
+
     as_boolean: BOOLEAN
         require
             is_boolean: is_boolean
@@ -547,7 +554,7 @@ end
 | --- | --- | --- | --- |
 | String | `is_string` | `as_string` | `READABLE_STRING_32` |
 | Integer | `is_integer` | `as_integer` | `INTEGER_64` |
-| Float | `is_float` | `as_float` | `REAL_64` |
+| Float | `is_float` | `as_float`, `as_float_text` | `REAL_64`, canonical decimal text |
 | Boolean | `is_boolean` | `as_boolean` | `BOOLEAN` |
 | Offset date-time | `is_offset_date_time` | `as_offset_date_time` | `TOMELLE_OFFSET_DATE_TIME` |
 | Local date-time | `is_local_date_time` | `as_local_date_time` | `TOMELLE_LOCAL_DATE_TIME` |
@@ -1315,6 +1322,14 @@ feature -- Scalar values
                 (Result.as_float /= Result.as_float and a_value /= a_value)
         end
 
+    new_float_from_text (a_source: READABLE_STRING_GENERAL): TOMELLE_VALUE
+            -- Exact conversion from a finite decimal representation.
+        require
+            valid_source: is_valid_float_text (a_source)
+        ensure
+            is_float: Result.is_float
+        end
+
     new_boolean (a_value: BOOLEAN): TOMELLE_VALUE
         ensure
             is_boolean: Result.is_boolean
@@ -1367,6 +1382,10 @@ feature -- Structured values
 
 feature -- Validation
 
+    is_valid_float_text (a_source: READABLE_STRING_GENERAL): BOOLEAN
+            -- Can `a_source` be passed to `new_float_from_text`?
+        end
+
     is_valid_unicode (a_value: READABLE_STRING_GENERAL): BOOLEAN
             -- Does `a_value` contain only Unicode scalar values?
         require
@@ -1378,6 +1397,9 @@ end
 
 TOML has no null value, so the factory intentionally has no `new_null`
 feature. `new_float` accepts finite values, infinities, and NaN.
+`new_float_from_text` is the compiler-independent path for exact decimal input;
+its canonical text is available through `as_float_text` and is used by the
+writer.
 
 ## Serialization
 
@@ -1481,7 +1503,9 @@ end
 
 File replacement is transactional: if encoding or writing fails, an existing
 target file remains unchanged whenever the host file system supports atomic
-replacement. Temporary files must not remain after a handled failure.
+replacement. Each attempt uses a uniquely named sibling temporary file so
+concurrent writers do not collide. Temporary files must not remain after a
+handled failure.
 
 ### Serialization Policy
 

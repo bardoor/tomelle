@@ -36,28 +36,38 @@ feature -- Serialization
             path_not_empty: not a_path.is_empty
         local
             l_file: RAW_FILE
-            l_temp_path: PATH
-            l_temp_name: STRING_32
+            l_started, l_failed: BOOLEAN
+            l_code: TOMELLE_ERROR_CODE
         do
             reset
             is_written := True
-            l_temp_name := a_path.name.as_string_32 + ".tomelle.tmp"
-            create l_temp_path.make_from_string (l_temp_name)
-            create l_file.make_with_path (l_temp_path)
-            l_file.create_read_write
-            l_file.put_string (encoded_utf_8 (serialized (a_document)))
-            l_file.close
-            l_file.rename_path (a_path)
-        rescue
-            if attached l_file and then not l_file.is_closed then
+            if l_failed then
+                if l_started then
+                    l_code := error_codes.output_interrupted
+                else
+                    l_code := error_codes.output_unwritable
+                end
+                create error.make (l_code,
+                    "Unable to write TOML output", a_path.name)
+            else
+                create l_file.make_open_temporary_with_prefix (
+                    a_path.name.as_string_32 + ".tomelle.")
+                l_started := True
+                l_file.put_string (encoded_utf_8 (serialized (a_document)))
                 l_file.close
+                l_file.rename_path (a_path)
             end
-            if attached l_file and then l_file.exists then
-                l_file.delete
+        rescue
+            if l_started and then attached l_file as l_opened_file then
+                if not l_opened_file.is_closed then
+                    l_opened_file.close
+                end
+                if l_opened_file.exists then
+                    l_opened_file.delete
+                end
             end
-            is_written := True
-            create error.make (error_codes.output_unwritable,
-                "Unable to write TOML output", a_path.name)
+            l_failed := True
+            retry
         end
 
     reset
@@ -97,16 +107,8 @@ feature {NONE} -- Serialization implementation
                 if l_float.is_nan then Result := "nan"
                 elseif l_float.is_positive_infinity then Result := "inf"
                 elseif l_float.is_negative_infinity then Result := "-inf"
-                elseif attached a_value.float_lexeme as l_lexeme then
-                    Result := l_lexeme.twin
-                    if not Result.has ('.') and then not Result.has ('e') and then not Result.has ('E') then
-                        Result.append (".0")
-                    end
                 else
-                    Result := l_float.out
-                    if not Result.has ('.') and then not Result.has ('e') and then not Result.has ('E') then
-                        Result.append (".0")
-                    end
+                    Result := a_value.as_float_text.as_string_32
                 end
             elseif a_value.is_boolean then
                 if a_value.as_boolean then

@@ -96,7 +96,7 @@ feature {NONE} -- Conversion
                     not l_text.same_string ("nan") and then not l_text.same_string ("+nan") and then
                     not l_text.same_string ("-nan")
                 then
-                    Result := value_factory.new_float_with_lexeme (l_text.to_double, l_text)
+                    Result := value_factory.new_float_from_text (l_text)
                 elseif l_type.same_string ("integer") or l_type.same_string ("float") or
                     l_type.same_string ("bool") or l_type.same_string ("datetime") or
                     l_type.same_string ("datetime-local") or l_type.same_string ("date-local") or

@@ -22,7 +22,16 @@ feature -- Access
         require valid_index: 1 <= a_index and a_index <= count
         do Result := internal_errors [a_index] end
 
-    errors: ITERABLE [TOMELLE_PARSE_ERROR] do Result := internal_errors end
+    errors: ITERABLE [TOMELLE_PARSE_ERROR]
+        local
+            l_snapshot: ARRAYED_LIST [TOMELLE_PARSE_ERROR]
+        do
+            create l_snapshot.make (internal_errors.count)
+            across internal_errors as l_error loop
+                l_snapshot.extend (l_error)
+            end
+            Result := l_snapshot
+        end
 
     has_error: BOOLEAN do Result := not internal_errors.is_empty end
 

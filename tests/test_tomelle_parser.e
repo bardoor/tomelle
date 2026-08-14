@@ -264,4 +264,153 @@ feature -- Test
             assert_true ("quoted literal dot", attached parser.document as d and then attached d.value_at ("point.%"literal.dot%"") as v and then v.as_boolean)
         end
 
+    test_float_codec_is_canonical
+        local
+            parser: TOMELLE_PARSER
+            writer: TOMELLE_WRITER
+            factory: TOMELLE_VALUE_FACTORY
+            text: STRING_32
+        do
+            create factory.make
+            assert_true ("integer-shaped decimal accepted", factory.is_valid_float_text ("42"))
+            assert_true ("signed exponent accepted", factory.is_valid_float_text ("-1.25e+3"))
+            assert_false ("infinity has value constructor", factory.is_valid_float_text ("inf"))
+            assert_false ("incomplete exponent rejected", factory.is_valid_float_text ("1e"))
+            assert_false ("decimal point needs fraction", factory.is_valid_float_text ("1."))
+            create parser.make
+            parser.parse_string (
+                "fixed = 1.0%N" +
+                "exponent = 1e0%N" +
+                "precise = 9_007_199_254_740_991.0%N")
+            assert_true ("float source parses", parser.is_successful)
+            assert_true ("equivalent spellings canonicalized",
+                attached parser.document as d and then
+                attached d.value_at ("fixed") as fixed and then
+                attached d.value_at ("exponent") as exponent and then
+                fixed.as_float_text.same_string (exponent.as_float_text))
+            assert_true ("large exact float preserved",
+                attached parser.document as d and then
+                attached d.value_at ("precise") as precise and then
+                precise.as_float_text.same_string_general ("9007199254740991.0"))
+            create writer.make
+            check attached parser.document as d then
+                text := writer.serialized (d)
+            end
+            assert_true ("writer uses canonical floats",
+                text.has_substring ("fixed = 1.0") and then
+                text.has_substring ("exponent = 1.0") and then
+                text.has_substring ("precise = 9007199254740991.0"))
+        end
+
+    test_integer_range_errors
+        local
+            parser: TOMELLE_PARSER
+        do
+            create parser.make
+            parser.parse_string ("value = 9223372036854775808%N")
+            assert_true ("decimal overflow rejected", parser.has_error)
+            assert_integers_equal ("decimal overflow code", 4, parser.error (1).code.value)
+            assert_integers_equal ("value column", 9, parser.error (1).position.column)
+            parser.parse_string ("value = 0xFFFFFFFFFFFFFFFFF%N")
+            assert_true ("based overflow rejected", parser.has_error)
+            assert_integers_equal ("based overflow code", 4, parser.error (1).code.value)
+        end
+
+    test_classified_value_errors
+        local
+            parser: TOMELLE_PARSER
+        do
+            create parser.make
+            parser.parse_string ("value = nope%N")
+            assert_integers_equal ("invalid number code", 8, parser.error (1).code.value)
+            assert_integers_equal ("invalid number column", 9, parser.error (1).position.column)
+            parser.parse_string ("value = 2026-99-99%N")
+            assert_integers_equal ("invalid date code", 9, parser.error (1).code.value)
+            parser.parse_string ("value = %"unterminated%N")
+            assert_integers_equal ("unexpected end code", 10, parser.error (1).code.value)
+        end
+
+    test_invalid_unicode_key_scalars
+        local
+            parser: TOMELLE_PARSER
+        do
+            create parser.make
+            parser.parse_string ("%"\uD800%" = 1%N")
+            assert_true ("surrogate key rejected", parser.has_error)
+            assert_integers_equal ("surrogate key code", 6, parser.error (1).code.value)
+            parser.parse_string ("%"\U00110000%" = 1%N")
+            assert_true ("out of range key rejected", parser.has_error)
+            assert_integers_equal ("out of range key code", 6, parser.error (1).code.value)
+        end
+
+    test_traversal_results_are_snapshots
+        local
+            table: TOMELLE_TABLE
+            parser: TOMELLE_PARSER
+            key_snapshot: ITERABLE [READABLE_STRING_32]
+            error_snapshot: ITERABLE [TOMELLE_PARSE_ERROR]
+        do
+            create table.make
+            table.put_integer (1, "key")
+            key_snapshot := table.keys
+            if attached {ARRAYED_LIST [READABLE_STRING_32]} key_snapshot as mutable_keys then
+                across mutable_keys as key loop
+                    if attached {STRING_32} key as mutable_key then
+                        mutable_key.wipe_out
+                    end
+                end
+                mutable_keys.wipe_out
+            end
+            assert_true ("table storage protected", table.has_key ("key") and then table.count = 1)
+
+            create parser.make
+            parser.parse_string ("value = nope%N")
+            error_snapshot := parser.errors
+            if attached {ARRAYED_LIST [TOMELLE_PARSE_ERROR]} error_snapshot as mutable_errors then
+                mutable_errors.wipe_out
+            end
+            if attached {STRING_32} parser.error (1).message as mutable_message then
+                mutable_message.wipe_out
+            end
+            assert_integers_equal ("parser errors protected", 1, parser.error_count)
+            assert_false ("error message protected", parser.error (1).message.is_empty)
+        end
+
+    test_error_code_stability
+        local
+            code: TOMELLE_ERROR_CODE
+        do
+            create code.default_create
+            assert_integers_equal ("invalid syntax", 1, code.invalid_syntax.value)
+            assert_integers_equal ("invalid utf8", 2, code.invalid_utf_8.value)
+            assert_integers_equal ("input unreadable", 3, code.input_unreadable.value)
+            assert_integers_equal ("integer range", 4, code.integer_out_of_range.value)
+            assert_integers_equal ("duplicate key", 5, code.duplicate_key.value)
+            assert_integers_equal ("invalid key", 6, code.invalid_key.value)
+            assert_integers_equal ("invalid string", 7, code.invalid_string.value)
+            assert_integers_equal ("invalid number", 8, code.invalid_number.value)
+            assert_integers_equal ("invalid datetime", 9, code.invalid_date_time.value)
+            assert_integers_equal ("unexpected end", 10, code.unexpected_end_of_input.value)
+            assert_integers_equal ("output unwritable", 101, code.output_unwritable.value)
+            assert_integers_equal ("output interrupted", 102, code.output_interrupted.value)
+        end
+
+    test_unwritable_output_contract
+        local
+            document: TOMELLE_DOCUMENT
+            writer: TOMELLE_WRITER
+            path: PATH
+        do
+            create document.make
+            document.put_integer_at (1, "value")
+            create path.make_from_string ("tests/tomelle-missing-directory/output.toml")
+            create writer.make
+            writer.write_file (document, path)
+            assert_true ("write attempted", writer.is_written)
+            assert_false ("write failed", writer.is_successful)
+            assert_true ("unwritable classified",
+                attached writer.error as write_error and then
+                write_error.code = write_error.code.output_unwritable)
+        end
+
 end

@@ -55,7 +55,7 @@ typed accessor.
 | --- | --- | --- | --- |
 | String | `is_string` | `as_string` | `READABLE_STRING_32` |
 | Integer | `is_integer` | `as_integer` | `INTEGER_64` |
-| Float | `is_float` | `as_float` | `REAL_64` |
+| Float | `is_float` | `as_float`, `as_float_text` | `REAL_64`, canonical decimal text |
 | Boolean | `is_boolean` | `as_boolean` | `BOOLEAN` |
 | Offset date-time | `is_offset_date_time` | `as_offset_date_time` | `TOMELLE_OFFSET_DATE_TIME` |
 | Local date-time | `is_local_date_time` | `as_local_date_time` | `TOMELLE_LOCAL_DATE_TIME` |
@@ -66,6 +66,12 @@ typed accessor.
 
 The accessors have preconditions. Calling `as_integer` on a string value is a
 contract violation.
+
+`as_float_text` exposes the compiler-independent canonical TOML spelling used
+by the writer. Use `TOMELLE_VALUE_FACTORY.new_float_from_text` when the input
+decimal must be converted without first passing through a compiler formatter;
+check `is_valid_float_text` before accepting untrusted input. Infinities and
+NaN are created with `new_float`.
 
 ### `TOMELLE_TABLE` and `TOMELLE_ARRAY`
 
@@ -88,8 +94,9 @@ writer.write_file (document, config_path)
 ```
 
 After `write_file`, check `is_successful`. A failed write exposes a
-`TOMELLE_WRITE_ERROR` through `error`. File writes use a temporary file followed
-by a rename, so a partially written destination is not left behind.
+`TOMELLE_WRITE_ERROR` through `error`. File writes use a uniquely named sibling
+temporary file followed by a rename, so a partially written destination is not
+left behind and concurrent writers do not share temporary paths.
 
 ## Reading an application config
 

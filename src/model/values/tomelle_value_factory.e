@@ -29,13 +29,6 @@ feature -- Construction
             correct_type: Result.is_string
         end
 
-    new_parser_string (a_encoded_value: STRING_32): TOMELLE_VALUE
-        do
-            create Result.make_parser_string (a_encoded_value)
-        ensure
-            correct_type: Result.is_string
-        end
-
     new_integer (a_value: INTEGER_64): TOMELLE_VALUE
         do
             create Result.make_integer (a_value)
@@ -50,9 +43,12 @@ feature -- Construction
             correct_type: Result.is_float
         end
 
-    new_float_with_lexeme (a_value: REAL_64; a_lexeme: STRING_32): TOMELLE_VALUE
+    new_float_from_text (a_source: READABLE_STRING_GENERAL): TOMELLE_VALUE
+            -- Float constructed from a validated finite decimal representation.
+        require
+            valid_source: is_valid_float_text (a_source)
         do
-            create Result.make_float_with_lexeme (a_value, a_lexeme)
+            create Result.make_float_from_source (a_source.as_string_32)
         ensure
             correct_type: Result.is_float
         end
@@ -104,6 +100,21 @@ feature -- Construction
             create Result.make_table (a_value)
         ensure
             correct_type: Result.is_table
+        end
+
+feature -- Validation
+
+    is_valid_float_text (a_source: READABLE_STRING_GENERAL): BOOLEAN
+            -- Can `a_source` be passed to `new_float_from_text`?
+        do
+            Result := float_codec.is_valid_finite_text (a_source)
+        end
+
+feature {NONE} -- Implementation
+
+    float_codec: TOMELLE_FLOAT_CODEC
+        once
+            create Result
         end
 
 end

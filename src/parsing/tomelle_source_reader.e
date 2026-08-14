@@ -66,7 +66,7 @@ feature -- Access
                     l_code := (c - 240) * 262144 + (c2 - 128) * 4096 + (c3 - 128) * 64 + c4 - 128
                     i := i + 3
                 else l_valid := False end
-                if l_valid and then l_code <= 1114111 and then not (55296 <= l_code and l_code <= 57343) then
+                if l_valid and then syntax_rules.is_unicode_scalar (l_code.to_natural_64) then
                     Result.append_code (l_code.to_natural_32)
                 else
                     l_valid := False
@@ -74,6 +74,13 @@ feature -- Access
                 i := i + 1
             end
             if not l_valid then Result := Void end
+        end
+
+feature {NONE} -- Rules
+
+    syntax_rules: TOMELLE_SYNTAX_RULES
+        once
+            create Result
         end
 
 end

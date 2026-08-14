@@ -9,7 +9,7 @@ create
 
 feature {NONE} -- Initialization
 
-    make do create value_factory.make end
+    make do create model_builder end
 
 feature -- Parsing
 
@@ -23,7 +23,7 @@ feature -- Parsing
                 l_inner := lexical.substring (l_text, 4, l_text.count - 3)
                 if not l_inner.is_empty and then l_inner [1] = '%N' then l_inner.remove (1) end
                 if is_valid_basic_string (l_inner, True) then
-                    Result := value_factory.new_parser_string (parser_encoded_string (decoded_basic_string (l_inner)))
+                    Result := model_builder.new_parser_string (parser_encoded_string (decoded_basic_string (l_inner)))
                 end
             elseif l_text.count >= 6 and then l_text.substring (1, 3).same_string ("%'%'%'") and then
                 l_text.substring (l_text.count - 2, l_text.count).same_string ("%'%'%'")
@@ -31,17 +31,17 @@ feature -- Parsing
                 l_inner := lexical.substring (l_text, 4, l_text.count - 3)
                 if not l_inner.is_empty and then l_inner [1] = '%N' then l_inner.remove (1) end
                 if is_valid_literal_string (l_inner, True) then
-                    Result := value_factory.new_parser_string (parser_encoded_string (l_inner))
+                    Result := model_builder.new_parser_string (parser_encoded_string (l_inner))
                 end
             elseif l_text.count >= 2 and then l_text [1] = '%"' and then l_text [l_text.count] = '%"' then
                 l_inner := lexical.substring (l_text, 2, l_text.count - 1)
                 if is_valid_basic_string (l_inner, False) then
-                    Result := value_factory.new_parser_string (parser_encoded_string (decoded_basic_string (l_inner)))
+                    Result := model_builder.new_parser_string (parser_encoded_string (decoded_basic_string (l_inner)))
                 end
             elseif l_text.count >= 2 and then l_text [1] = '%'' and then l_text [l_text.count] = '%'' then
                 l_inner := lexical.substring (l_text, 2, l_text.count - 1)
                 if is_valid_literal_string (l_inner, False) then
-                    Result := value_factory.new_parser_string (parser_encoded_string (l_inner))
+                    Result := model_builder.new_parser_string (parser_encoded_string (l_inner))
                 end
             end
         end
@@ -82,7 +82,7 @@ feature -- Validation
                                         l_code := l_code * 16 + digit_value (a_text [i + j]).to_natural_64
                                         j := j + 1
                                     end
-                                    Result := l_code <= 0x10FFFF and then not (0xD800 <= l_code and l_code <= 0xDFFF)
+                                    Result := syntax_rules.is_unicode_scalar (l_code)
                                 end
                                 i := i + l_digits
                             end
@@ -222,6 +222,7 @@ feature {NONE} -- Decoding
         end
 
     lexical: TOMELLE_LEXICAL_TOOLS once create Result end
-    value_factory: TOMELLE_VALUE_FACTORY
+    syntax_rules: TOMELLE_SYNTAX_RULES once create Result end
+    model_builder: TOMELLE_MODEL_BUILDER
 
 end

@@ -93,17 +93,15 @@ feature {NONE} -- Statements
 
     put_statement (a_current_table: TOMELLE_TABLE; a_section: STRING_32; a_statement: TOMELLE_KEY_VALUE_STATEMENT)
         local
-            l_context: TOMELLE_DOCUMENT
-            l_value: detachable TOMELLE_VALUE
+            l_result: TOMELLE_VALUE_PARSE_RESULT
         do
-            l_value := value_parser.parse (a_statement.value_text)
-            if attached l_value as v then
-                create l_context.make
-                l_context.set_root (a_current_table)
-                put_value (l_context, a_section, a_statement.key_expression, v, a_statement.position.line)
+            l_result := value_parser.parse_result (a_statement.value_text)
+            if attached l_result.value as v then
+                put_value (a_current_table, a_section, a_statement.key_expression, v,
+                    a_statement.position.line)
             else
-                errors.add (error_codes.invalid_syntax, "Invalid TOML value", Void,
-                    a_statement.position.line, 1)
+                errors.add (l_result.error_code, l_result.message, Void,
+                    a_statement.position.line, a_statement.value_column + l_result.error_column - 1)
             end
         end
 
@@ -201,19 +199,22 @@ feature {NONE} -- Tree navigation
 
 feature {NONE} -- Definition validation
 
-    put_value (a_document: TOMELLE_DOCUMENT; a_section, a_expression: STRING_32;
+    put_value (a_root: TOMELLE_TABLE; a_section, a_expression: STRING_32;
         a_value: TOMELLE_VALUE; a_line: INTEGER)
-        local l_expression: STRING_32
+        local
+            l_expression: STRING_32
+            l_path: TOMELLE_PATH
         do
             l_expression := lexical.trimmed (a_expression)
+            create l_path.make_from_key_expression (l_expression)
             if has_sealed_prefix (a_section, l_expression) then
                 errors.add (error_codes.duplicate_key, "Cannot extend an inline table", Void, a_line, 1)
             elseif has_explicit_descendant_prefix (a_section, l_expression) then
                 errors.add (error_codes.duplicate_key, "Cannot extend an explicitly defined table", Void, a_line, 1)
-            elseif a_document.has_at (l_expression) then
+            elseif model_builder.has (a_root, l_path) then
                 errors.add (error_codes.duplicate_key, "Duplicate key", Void, a_line, 1)
-            elseif a_document.can_put_at (l_expression) then
-                a_document.put_at (a_value, l_expression)
+            elseif model_builder.can_put (a_root, l_path) then
+                model_builder.put_owned (a_root, a_value, l_path)
                 mark_dotted_tables (a_section, l_expression)
                 if a_value.is_table then
                     definitions.mark_sealed (canonical_joined_prefix (a_section, l_expression,
@@ -306,5 +307,6 @@ feature {NONE} -- Dependencies
     value_parser: TOMELLE_VALUE_PARSER once create Result.make end
     lexical: TOMELLE_LEXICAL_TOOLS once create Result end
     error_codes: TOMELLE_ERROR_CODE once create Result.default_create end
+    model_builder: TOMELLE_MODEL_BUILDER once create Result end
 
 end

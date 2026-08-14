@@ -72,24 +72,8 @@ feature -- Status report
 
     can_put (a_path: TOMELLE_PATH): BOOLEAN
         require path_not_empty: a_path.count > 0
-        local
-            i: INTEGER
-            l_value: detachable TOMELLE_VALUE
-            l_table: TOMELLE_TABLE
         do
-            Result := True
-            l_table := root
-            from i := 1 until i >= a_path.count or else not Result loop
-                l_value := l_table [a_path [i]]
-                if attached l_value as v then
-                    if v.is_table then
-                        l_table := v.as_table
-                    else
-                        Result := False
-                    end
-                end
-                i := i + 1
-            end
+            Result := model_builder.can_put (root, a_path)
         end
 
     can_put_at (a_key_expression: READABLE_STRING_GENERAL): BOOLEAN
@@ -285,7 +269,7 @@ feature -- Comparison
             Result := root.is_equal (other.root)
         end
 
-feature {TOMELLE_PARSER, TOMELLE_CONTAINER_PARSER, TOMELLE_DOCUMENT_BUILDER, TOMELLE_DOCUMENT} -- Parser support
+feature {TOMELLE_DOCUMENT} -- Copy support
 
     set_root (a_root: TOMELLE_TABLE)
         do
@@ -307,24 +291,13 @@ feature {NONE} -- Implementation
         end
 
     put_owned (a_value: TOMELLE_VALUE; a_path: TOMELLE_PATH)
-        local
-            i: INTEGER
-            l_table, l_new_table: TOMELLE_TABLE
-            l_wrapper: TOMELLE_VALUE
         do
-            l_table := root
-            from i := 1 until i >= a_path.count loop
-                if attached l_table [a_path [i]] as v then
-                    l_table := v.as_table
-                else
-                    create l_new_table.make
-                    create l_wrapper.make_table (l_new_table)
-                    l_table.put_owned (l_wrapper, a_path [i])
-                    l_table := l_wrapper.as_table
-                end
-                i := i + 1
-            end
-            l_table.put_owned (a_value, a_path [a_path.count])
+            model_builder.put_owned (root, a_value, a_path)
+        end
+
+    model_builder: TOMELLE_MODEL_BUILDER
+        once
+            create Result
         end
 
 end

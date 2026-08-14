@@ -52,7 +52,7 @@ feature -- Parsing
             l_inner, l_part, l_expression: STRING_32
             l_parts: ARRAYED_LIST [STRING_32]
             l_table: TOMELLE_TABLE
-            l_document: TOMELLE_DOCUMENT
+            l_path: TOMELLE_PATH
             l_sealed: ARRAYED_LIST [STRING_32]
             l_value: detachable TOMELLE_VALUE
             l_equal, i: INTEGER
@@ -77,12 +77,12 @@ feature -- Parsing
                         if attached l_value as v then
                             l_expression := lexical.trimmed (lexical.substring (l_part, 1, l_equal - 1))
                             if key_syntax.is_valid_expression (l_expression) then
-                                create l_document.make
-                                l_document.set_root (l_table)
-                                if l_document.can_put_at (l_expression) and then not l_document.has_at (l_expression) and then
+                                create l_path.make_from_key_expression (l_expression)
+                                if model_builder.can_put (l_table, l_path) and then
+                                    not model_builder.has (l_table, l_path) and then
                                     not has_sealed_prefix (l_sealed, l_expression)
                                 then
-                                    l_document.put_at (v, l_expression)
+                                    model_builder.put_owned (l_table, v, l_path)
                                     if v.is_table then l_sealed.extend (canonical_expression (l_expression)) end
                                 else l_valid := False end
                             else l_valid := False end
@@ -133,5 +133,6 @@ feature {NONE} -- Parsers
     key_syntax: TOMELLE_KEY_SYNTAX once create Result.make end
     value_parser: TOMELLE_VALUE_PARSER once create Result.make end
     value_factory: TOMELLE_VALUE_FACTORY
+    model_builder: TOMELLE_MODEL_BUILDER once create Result end
 
 end

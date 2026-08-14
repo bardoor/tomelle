@@ -48,8 +48,14 @@ feature -- Access
         end
 
     keys: ITERABLE [READABLE_STRING_32]
+        local
+            l_snapshot: ARRAYED_LIST [READABLE_STRING_32]
         do
-            Result := internal_keys
+            create l_snapshot.make (internal_keys.count)
+            across internal_keys as l_key loop
+                l_snapshot.extend (l_key.twin)
+            end
+            Result := l_snapshot
         end
 
 feature -- Measurement

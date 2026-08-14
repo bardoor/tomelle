@@ -80,8 +80,7 @@ feature {NONE} -- Tagged JSON
                     l_text := a_value.as_integer.out
                 elseif a_value.is_float then
                     l_type := "float"
-                    if attached a_value.float_lexeme as l_lexeme then l_text := l_lexeme
-                    else l_text := float_text (a_value.as_float) end
+                    l_text := a_value.as_float_text.as_string_32
                 elseif a_value.is_boolean then
                     l_type := "bool"
                     if a_value.as_boolean then l_text := "true" else l_text := "false" end

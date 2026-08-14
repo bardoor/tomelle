@@ -30,12 +30,12 @@ feature -- Parsing
                     Result := value_factory.new_float ((0.0).nan)
                 elseif l_text.same_string ("-nan") then
                     Result := value_factory.new_float (-(0.0).nan)
-                elseif is_based_integer (l_text) then
+                elseif is_based_integer (l_text) and then is_based_integer_in_range (l_text) then
                     Result := value_factory.new_integer (based_integer (l_text))
                 elseif is_decimal_integer (l_text) and then l_text.is_integer_64 then
                     Result := value_factory.new_integer (l_text.to_integer_64)
                 elseif is_decimal_float (l_text) and then l_text.is_real_64 then
-                    Result := value_factory.new_float_with_lexeme (l_text.to_double, l_text)
+                    Result := value_factory.new_float_from_text (l_text)
                 end
             end
         end
@@ -67,6 +67,19 @@ feature -- Validation
                     end
                 end
                 i := i + 1
+            end
+        end
+
+    is_integer_out_of_range (a_source: STRING_32): BOOLEAN
+            -- Is `a_source` a syntactically valid integer outside TOML's signed 64-bit range?
+        local
+            l_text: STRING_32
+        do
+            l_text := a_source.twin
+            if valid_numeric_underscores (l_text) then
+                l_text.replace_substring_all ("_", "")
+                Result := (is_decimal_integer (l_text) and then not l_text.is_integer_64) or else
+                    (is_based_integer (l_text) and then not is_based_integer_in_range (l_text))
             end
         end
 
@@ -139,6 +152,31 @@ feature {NONE} -- Formats
             else end
             from i := i + 2 until i > a_text.count loop Result := Result * l_base + digit_value (a_text [i]); i := i + 1 end
             Result := Result * l_sign
+        end
+
+    is_based_integer_in_range (a_text: STRING_32): BOOLEAN
+        require
+            based: is_based_integer (a_text)
+        local
+            i, l_base, l_digit: INTEGER
+            l_value, l_limit: INTEGER_64
+        do
+            i := 1
+            inspect a_text [i + 1]
+            when 'x' then l_base := 16
+            when 'o' then l_base := 8
+            when 'b' then l_base := 2
+            else end
+            l_limit := {INTEGER_64}.max_value
+            Result := True
+            from i := i + 2 until i > a_text.count or else not Result loop
+                l_digit := digit_value (a_text [i])
+                Result := l_value <= (l_limit - l_digit) // l_base
+                if Result then
+                    l_value := l_value * l_base + l_digit
+                end
+                i := i + 1
+            end
         end
 
     digit_value (a_character: CHARACTER_32): INTEGER

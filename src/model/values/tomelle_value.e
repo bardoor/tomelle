@@ -10,13 +10,14 @@ inherit
             is_equal
         end
 
-create {TOMELLE_VALUE, TOMELLE_VALUE_FACTORY, TOMELLE_PARSER, TOMELLE_DOCUMENT, TOMELLE_TABLE, TOMELLE_ARRAY}
+create {TOMELLE_VALUE, TOMELLE_VALUE_FACTORY, TOMELLE_DOCUMENT, TOMELLE_TABLE, TOMELLE_ARRAY, TOMELLE_MODEL_BUILDER}
     make_string,
     make_string_owned,
     make_parser_string,
     make_integer,
     make_float,
-    make_float_with_lexeme,
+    make_float_from_source,
+    make_float_canonical,
     make_boolean,
     make_offset_date_time,
     make_local_date_time,
@@ -71,13 +72,21 @@ feature {NONE} -- Initialization
         do
             kind := float_kind
             internal_float := a_value
+            internal_float_text := float_codec.canonical_value (a_value)
         end
 
-    make_float_with_lexeme (a_value: REAL_64; a_lexeme: STRING_32)
+    make_float_from_source (a_source: STRING_32)
+        do
+            kind := float_kind
+            internal_float := float_codec.parsed_value (a_source)
+            internal_float_text := float_codec.canonical_source (a_source)
+        end
+
+    make_float_canonical (a_value: REAL_64; a_text: READABLE_STRING_GENERAL)
         do
             kind := float_kind
             internal_float := a_value
-            float_lexeme := a_lexeme
+            internal_float_text := a_text.as_string_32.twin
         end
 
     make_boolean (a_value: BOOLEAN)
@@ -204,7 +213,14 @@ feature -- Typed access
             Result := internal_float
         end
 
-    float_lexeme: detachable STRING_32
+    as_float_text: READABLE_STRING_32
+            -- Canonical, compiler-independent TOML spelling of this float.
+        require is_float: is_float
+        do
+            check attached internal_float_text as l_text then
+                Result := l_text.twin
+            end
+        end
 
     as_boolean: BOOLEAN
         require is_boolean: is_boolean
@@ -265,11 +281,7 @@ feature {TOMELLE_DOCUMENT, TOMELLE_TABLE, TOMELLE_ARRAY, TOMELLE_VALUE_FACTORY} 
                 end
             when integer_kind then create Result.make_integer (as_integer)
             when float_kind then
-                if attached float_lexeme as l_lexeme then
-                    create Result.make_float_with_lexeme (as_float, l_lexeme)
-                else
-                    create Result.make_float (as_float)
-                end
+                create Result.make_float_canonical (as_float, as_float_text)
             when boolean_kind then create Result.make_boolean (as_boolean)
             when offset_date_time_kind then create Result.make_offset_date_time (as_offset_date_time)
             when local_date_time_kind then create Result.make_local_date_time (as_local_date_time)
@@ -356,6 +368,7 @@ feature {NONE} -- Storage
     parser_encoded_string: detachable STRING_32
     internal_integer: INTEGER_64
     internal_float: REAL_64
+    internal_float_text: detachable STRING_32
     internal_boolean: BOOLEAN
     internal_offset_date_time: TOMELLE_OFFSET_DATE_TIME
     internal_local_date_time: TOMELLE_LOCAL_DATE_TIME
@@ -375,9 +388,15 @@ feature {NONE} -- Storage
     array_kind: INTEGER = 9
     table_kind: INTEGER = 10
 
+    float_codec: TOMELLE_FLOAT_CODEC
+        once
+            create Result
+        end
+
 invariant
     valid_kind: string_kind <= kind and kind <= table_kind
     string_storage_exists: is_string implies attached internal_characters or attached parser_encoded_string
+    float_text_exists: is_float implies attached internal_float_text
     array_attached: is_array implies attached internal_array
     table_attached: is_table implies attached internal_table
 
