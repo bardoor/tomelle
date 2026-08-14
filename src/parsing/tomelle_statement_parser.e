@@ -8,10 +8,10 @@ feature -- Parsing
 
     parse (a_line: TOMELLE_LOGICAL_LINE): detachable TOMELLE_STATEMENT
         local
-            l_content, l_expression, l_value: STRING_32
-            l_equal: INTEGER
+            l_content, l_expression, l_value, l_source_value: STRING_32
+            l_equal, l_value_column, l_value_end: INTEGER
         do
-            l_content := lexical.trimmed (lexical.without_comment (a_line.text))
+            l_content := lexical.trimmed (a_line.text)
             if l_content.count >= 4 and then l_content.substring (1, 2).same_string ("[[") and then
                 l_content.substring (l_content.count - 1, l_content.count).same_string ("]]" )
             then
@@ -32,8 +32,15 @@ feature -- Parsing
                     l_expression := lexical.trimmed (l_content.substring (1, l_equal - 1))
                     l_value := lexical.substring (l_content, l_equal + 1, l_content.count)
                     if key_syntax.is_valid_expression (l_expression) then
-                        create {TOMELLE_KEY_VALUE_STATEMENT} Result.make (l_expression, l_value,
-                            a_line.position, first_value_column (a_line.text))
+                        l_value_column := first_value_column (a_line.text)
+                        from l_value_end := a_line.text.count until
+                            l_value_end < l_value_column or else not a_line.text [l_value_end].is_space
+                        loop
+                            l_value_end := l_value_end - 1
+                        end
+                        l_source_value := lexical.substring (a_line.source_text, l_value_column, l_value_end)
+                        create {TOMELLE_KEY_VALUE_STATEMENT} Result.make (l_expression, l_value, l_source_value,
+                            a_line.position, l_value_column)
                     end
                 end
             end

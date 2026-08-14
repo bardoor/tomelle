@@ -22,7 +22,24 @@
     </library>
     <cluster name="model_values" location="./src/model/values">
       <visible class="TOMELLE_VALUE"/>
-      <visible class="TOMELLE_VALUE_FACTORY"/>
+      <visible class="TOMELLE_FLOAT_CODEC"/>
+      <visible class="TOMELLE_STRING"/>
+      <visible class="TOMELLE_INTEGER"/>
+      <visible class="TOMELLE_FLOAT"/>
+      <visible class="TOMELLE_BOOLEAN"/>
+      <visible class="TOMELLE_OFFSET_DATE_TIME_VALUE"/>
+      <visible class="TOMELLE_LOCAL_DATE_TIME_VALUE"/>
+      <visible class="TOMELLE_LOCAL_DATE_VALUE"/>
+      <visible class="TOMELLE_LOCAL_TIME_VALUE"/>
+    </cluster>
+    <cluster name="model_items" location="./src/model/items">
+      <visible class="TOMELLE_ITEM"/>
+      <visible class="TOMELLE_TRIVIA"/>
+      <visible class="TOMELLE_KEY"/>
+      <visible class="TOMELLE_ENTRY"/>
+      <visible class="TOMELLE_COMMENT"/>
+      <visible class="TOMELLE_WHITESPACE"/>
+      <visible class="TOMELLE_HEADER"/>
     </cluster>
     <cluster name="model_collections" location="./src/model/collections">
       <visible class="TOMELLE_DOCUMENT"/>
@@ -41,6 +58,7 @@
     </cluster>
     <cluster name="parsing" location="./src/parsing">
       <visible class="TOMELLE_PARSER"/>
+      <visible class="TOMELLE_PARSE_RESULT"/>
     </cluster>
     <cluster name="serialization" location="./src/serialization">
       <visible class="TOMELLE_WRITER"/>

@@ -45,6 +45,70 @@ feature -- Text
             Result := substring (a_line, 1, i - 1)
         end
 
+    without_comments (a_text: STRING_32): STRING_32
+            -- Copy `a_text`, replacing comments outside strings with spaces.
+        local
+            i, l_run: INTEGER
+            l_quote: CHARACTER_32
+            l_multiline, l_escaped, l_comment: BOOLEAN
+        do
+            create Result.make (a_text.count)
+            from i := 1 until i > a_text.count loop
+                if l_comment then
+                    if a_text [i] = '%N' or else a_text [i] = '%R' then
+                        l_comment := False
+                        Result.extend (a_text [i])
+                    else
+                        Result.extend (' ')
+                    end
+                elseif l_quote = '%U' then
+                    if i + 2 <= a_text.count and then
+                        ((a_text [i] = '%"' and a_text [i + 1] = '%"' and a_text [i + 2] = '%"') or else
+                         (a_text [i] = '%'' and a_text [i + 1] = '%'' and a_text [i + 2] = '%''))
+                    then
+                        l_quote := a_text [i]
+                        l_multiline := True
+                        Result.append (a_text.substring (i, i + 2))
+                        i := i + 2
+                    elseif a_text [i] = '%"' or else a_text [i] = '%'' then
+                        l_quote := a_text [i]
+                        Result.extend (a_text [i])
+                    elseif a_text [i] = '#' then
+                        l_comment := True
+                        Result.extend (' ')
+                    else
+                        Result.extend (a_text [i])
+                    end
+                elseif l_multiline then
+                    if a_text [i] = l_quote and then not l_escaped then
+                        from l_run := 0 until i + l_run > a_text.count or else a_text [i + l_run] /= l_quote loop
+                            l_run := l_run + 1
+                        end
+                        if l_run >= 3 then
+                            Result.append (a_text.substring (i, i + l_run - 1))
+                            i := i + l_run - 1
+                            l_quote := '%U'
+                            l_multiline := False
+                        else
+                            Result.extend (a_text [i])
+                        end
+                    else
+                        Result.extend (a_text [i])
+                        l_escaped := l_quote = '%"' and then a_text [i] = '\' and then not l_escaped
+                        if a_text [i] /= '\' then l_escaped := False end
+                    end
+                else
+                    Result.extend (a_text [i])
+                    if a_text [i] = l_quote and then not l_escaped then l_quote := '%U' end
+                    l_escaped := l_quote = '%"' and then a_text [i] = '\' and then not l_escaped
+                    if a_text [i] /= '\' then l_escaped := False end
+                end
+                i := i + 1
+            end
+        ensure
+            same_count: Result.count = a_text.count
+        end
+
 feature -- Structure
 
     top_level_equal (a_text: STRING_32): INTEGER

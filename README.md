@@ -22,8 +22,11 @@ with EiffelStudio and Gobo Eiffel.
 - UTF-8 and Unicode strings, keys, and escapes. Malformed UTF-8 is rejected.
 - Typed values for strings, integers, floats, booleans, dates, times, arrays,
   and tables.
+- Lossless parsing and style-preserving edits: comments, blank lines, key
+  spelling, quoting, whitespace, number spelling, and container layout survive
+  a parse/edit/write cycle.
 - Dotted-key access for reading and updating nested values.
-- Deterministic TOML serialization.
+- Lossless serialization plus an explicit deterministic canonical renderer.
 - Void-safe API with preconditions, postconditions, and class invariants.
 
 ## Installation
@@ -62,19 +65,20 @@ feature {NONE} -- Initialization
     make
         local
             parser: TOMELLE_PARSER
+            parse_result: TOMELLE_PARSE_RESULT
             document: TOMELLE_DOCUMENT
-            title: TOMELLE_VALUE
+            title: TOMELLE_STRING
         do
             create parser.make
-            parser.parse_string ("title = %"Tomelle%"%N")
+            parse_result := parser.parsed_string ("title = %"Tomelle%"%N")
 
-            if parser.is_successful then
-                check attached parser.document as parsed_document then
+            if parse_result.is_successful then
+                check attached parse_result.document as parsed_document then
                     document := parsed_document
                 end
-                if attached document.value_at ("title") as parsed_title then
+                if attached {TOMELLE_STRING} document.value_at ("title") as parsed_title then
                     title := parsed_title
-                    print (title.as_string)
+                    print (title.value)
                     print ("%N")
                 end
             end
@@ -112,21 +116,22 @@ feature {NONE} -- Initialization
     make
         local
             parser: TOMELLE_PARSER
+            parse_result: TOMELLE_PARSE_RESULT
             config_path: PATH
             document: TOMELLE_DOCUMENT
-            port: TOMELLE_VALUE
+            port: TOMELLE_INTEGER
         do
             create config_path.make_from_string ("examples/config.toml")
             create parser.make
-            parser.parse_file (config_path)
+            parse_result := parser.parsed_file (config_path)
 
-            if parser.is_successful then
-                check attached parser.document as parsed_document then
+            if parse_result.is_successful then
+                check attached parse_result.document as parsed_document then
                     document := parsed_document
                 end
-                if attached document.value_at ("server.port") as parsed_port then
+                if attached {TOMELLE_INTEGER} document.value_at ("server.port") as parsed_port then
                     port := parsed_port
-                    print (port.as_integer)
+                    print (port.value)
                     print ("%N")
                 end
             end

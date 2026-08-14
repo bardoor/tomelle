@@ -18,6 +18,7 @@ feature {NONE} -- Initialization
     make
         do
             create root.make
+            create internal_items.make (0)
         ensure
             empty: is_empty
         end
@@ -25,6 +26,30 @@ feature {NONE} -- Initialization
 feature -- Access
 
     root: TOMELLE_TABLE
+
+    representation: STRING_32
+            -- Lossless source text while pristine; ordered item text otherwise.
+        do
+            if has_preserved_source and then attached source_text as l_source then
+                Result := l_source.twin
+            else
+                create Result.make_empty
+                across internal_items as l_item loop
+                    Result.append (l_item.representation)
+                end
+            end
+        end
+
+    items: ITERABLE [TOMELLE_ITEM]
+            -- Physical document items in source order.
+        do
+            Result := internal_items
+        end
+
+    item_count: INTEGER
+        do
+            Result := internal_items.count
+        end
 
     value (a_path: TOMELLE_PATH): detachable TOMELLE_VALUE
         do
@@ -38,18 +63,18 @@ feature -- Access
         end
 
     table_at (a_key_expression: READABLE_STRING_GENERAL): TOMELLE_TABLE
-        require table_value: attached value_at (a_key_expression) as v and then v.is_table
+        require table_value: attached {TOMELLE_TABLE} value_at (a_key_expression)
         do
-            check attached value_at (a_key_expression) as v then
-                Result := v.as_table
+            check attached {TOMELLE_TABLE} value_at (a_key_expression) as l_table then
+                Result := l_table
             end
         end
 
     array_at (a_key_expression: READABLE_STRING_GENERAL): TOMELLE_ARRAY
-        require array_value: attached value_at (a_key_expression) as v and then v.is_array
+        require array_value: attached {TOMELLE_ARRAY} value_at (a_key_expression)
         do
-            check attached value_at (a_key_expression) as v then
-                Result := v.as_array
+            check attached {TOMELLE_ARRAY} value_at (a_key_expression) as l_array then
+                Result := l_array
             end
         end
 
@@ -97,7 +122,7 @@ feature -- General modification
             path_not_empty: a_path.count > 0
             path_compatible: can_put (a_path)
         do
-            put_owned (a_value.cloned_value, a_path)
+            store_owned (a_value.cloned_value, a_path, expression_for_path (a_path))
         ensure
             stored: attached value (a_path)
         end
@@ -115,15 +140,18 @@ feature -- General modification
             i: INTEGER
             l_table: TOMELLE_TABLE
             l_value: detachable TOMELLE_VALUE
+            l_removed_value: detachable TOMELLE_VALUE
             l_possible: BOOLEAN
         do
+            is_modified := True
+            l_removed_value := value (a_path)
             if a_path.count > 0 then
                 l_table := root
                 l_possible := True
                 from i := 1 until i >= a_path.count or else not l_possible loop
                     l_value := l_table [a_path [i]]
-                    if attached l_value as v and then v.is_table then
-                        l_table := v.as_table
+                    if attached {TOMELLE_TABLE} l_value as l_nested_table then
+                        l_table := l_nested_table
                     else
                         l_possible := False
                     end
@@ -132,6 +160,9 @@ feature -- General modification
                 if l_possible then
                     l_table.remove (a_path [a_path.count])
                 end
+            end
+            if attached l_removed_value as l_removed then
+                remove_physical_value (l_removed)
             end
         ensure absent: not has (a_path)
         end
@@ -147,6 +178,8 @@ feature -- General modification
     wipe_out
         do
             root.wipe_out
+            internal_items.wipe_out
+            is_modified := True
         ensure
             empty: is_empty
         end
@@ -156,82 +189,76 @@ feature -- Typed modification
     put_string_at (a_value: READABLE_STRING_GENERAL; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
         local
-            v: TOMELLE_VALUE
+            v: TOMELLE_STRING
         do
-            create v.make_string (a_value)
+            create v.make (a_value)
             put_owned_at (v, a_key_expression)
         end
     put_integer_at (a_value: INTEGER_64; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
         local
-            v: TOMELLE_VALUE
+            v: TOMELLE_INTEGER
         do
-            create v.make_integer (a_value)
+            create v.make (a_value)
             put_owned_at (v, a_key_expression)
         end
     put_float_at (a_value: REAL_64; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
         local
-            v: TOMELLE_VALUE
+            v: TOMELLE_FLOAT
         do
-            create v.make_float (a_value)
+            create v.make (a_value)
             put_owned_at (v, a_key_expression)
         end
     put_boolean_at (a_value: BOOLEAN; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
         local
-            v: TOMELLE_VALUE
+            v: TOMELLE_BOOLEAN
         do
-            create v.make_boolean (a_value)
+            create v.make (a_value)
             put_owned_at (v, a_key_expression)
         end
     put_local_date_at (a_value: TOMELLE_LOCAL_DATE; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
         local
-            v: TOMELLE_VALUE
+            v: TOMELLE_LOCAL_DATE_VALUE
         do
-            create v.make_local_date (a_value)
+            create v.make (a_value)
             put_owned_at (v, a_key_expression)
         end
     put_local_time_at (a_value: TOMELLE_LOCAL_TIME; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
         local
-            v: TOMELLE_VALUE
+            v: TOMELLE_LOCAL_TIME_VALUE
         do
-            create v.make_local_time (a_value)
+            create v.make (a_value)
             put_owned_at (v, a_key_expression)
         end
     put_local_date_time_at (a_value: TOMELLE_LOCAL_DATE_TIME; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
         local
-            v: TOMELLE_VALUE
+            v: TOMELLE_LOCAL_DATE_TIME_VALUE
         do
-            create v.make_local_date_time (a_value)
+            create v.make (a_value)
             put_owned_at (v, a_key_expression)
         end
     put_offset_date_time_at (a_value: TOMELLE_OFFSET_DATE_TIME; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
         local
-            v: TOMELLE_VALUE
+            v: TOMELLE_OFFSET_DATE_TIME_VALUE
         do
-            create v.make_offset_date_time (a_value)
+            create v.make (a_value)
             put_owned_at (v, a_key_expression)
         end
     put_table_at (a_value: TOMELLE_TABLE; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
-        local
-            v: TOMELLE_VALUE
         do
-            create v.make_table (a_value)
-            put_owned_at (v, a_key_expression)
+            put_owned_at (a_value.cloned_value, a_key_expression)
         end
     put_array_at (a_value: TOMELLE_ARRAY; a_key_expression: READABLE_STRING_GENERAL)
         require path_compatible: can_put_at (a_key_expression)
-        local
-            v: TOMELLE_VALUE
         do
-            create v.make_array (a_value)
-            put_owned_at (v, a_key_expression)
+            put_owned_at (a_value.cloned_value, a_key_expression)
         end
 
     make_table_at (a_key_expression: READABLE_STRING_GENERAL)
@@ -254,9 +281,25 @@ feature -- Typed modification
 feature -- Copying
 
     independent_copy: TOMELLE_DOCUMENT
+        local
+            l_root_copy: TOMELLE_TABLE
         do
             create Result.make
-            Result.set_root (root.cloned_table)
+            l_root_copy := root.cloned_table
+            Result.set_root (l_root_copy)
+            across internal_items as l_item loop
+                if attached {TOMELLE_ENTRY} l_item as l_entry and then
+                    attached cloned_counterpart (l_entry.value, root, l_root_copy) as l_value_copy
+                then
+                    Result.append_item (l_entry.independent_copy_with_value (l_value_copy))
+                else
+                    Result.append_item_copy (l_item)
+                end
+            end
+            if attached source_text as l_source then
+                Result.set_source_text (l_source)
+            end
+            Result.set_modified (is_modified)
         ensure
             independent: Result /= Current
             equivalent: Result.is_equal (Current)
@@ -276,7 +319,68 @@ feature {TOMELLE_DOCUMENT} -- Copy support
             root := a_root
         end
 
+    append_item_copy (a_item: TOMELLE_ITEM)
+        local
+            l_comment_copy: TOMELLE_COMMENT
+            l_whitespace_copy: TOMELLE_WHITESPACE
+            l_header_copy: TOMELLE_HEADER
+        do
+            if attached {TOMELLE_ENTRY} a_item as l_entry then
+                internal_items.extend (l_entry.independent_copy)
+            elseif attached {TOMELLE_COMMENT} a_item as l_comment then
+                create l_comment_copy.make (l_comment.text)
+                l_comment_copy.set_trivia (l_comment.trivia)
+                internal_items.extend (l_comment_copy)
+            elseif attached {TOMELLE_WHITESPACE} a_item as l_whitespace then
+                create l_whitespace_copy.make (l_whitespace.text)
+                l_whitespace_copy.set_trivia (l_whitespace.trivia)
+                internal_items.extend (l_whitespace_copy)
+            elseif attached {TOMELLE_HEADER} a_item as l_header then
+                create l_header_copy.make (l_header.source, l_header.is_array)
+                internal_items.extend (l_header_copy)
+            end
+        end
+
+    set_modified (a_modified: BOOLEAN)
+        do
+            is_modified := a_modified
+        end
+
+feature {TOMELLE_DOCUMENT, TOMELLE_DOCUMENT_BUILDER} -- Parser construction
+
+    set_source_text (a_source: READABLE_STRING_GENERAL)
+        do
+            source_text := a_source.as_string_32.twin
+            source_model_representation := root.representation
+            is_modified := False
+        ensure
+            pristine: not is_modified
+        end
+
+    append_item (a_item: TOMELLE_ITEM)
+        do
+            internal_items.extend (a_item)
+        ensure
+            one_more: item_count = old item_count + 1
+        end
+
 feature {NONE} -- Implementation
+
+    internal_items: ARRAYED_LIST [TOMELLE_ITEM]
+    source_text: detachable STRING_32
+    source_model_representation: detachable STRING_32
+
+feature -- Status report
+
+    is_modified: BOOLEAN
+
+    has_preserved_source: BOOLEAN
+            -- Can the original text be emitted without hiding semantic mutations?
+        do
+            Result := not is_modified and then attached source_text and then
+                attached source_model_representation as l_original and then
+                root.representation.same_string (l_original)
+        end
 
     key_syntax: TOMELLE_KEY_SYNTAX
         once
@@ -287,12 +391,89 @@ feature {NONE} -- Implementation
         local l_path: TOMELLE_PATH
         do
             create l_path.make_from_key_expression (a_expression)
-            put_owned (a_value, l_path)
+            store_owned (a_value, l_path, a_expression)
         end
 
     put_owned (a_value: TOMELLE_VALUE; a_path: TOMELLE_PATH)
         do
             model_builder.put_owned (root, a_value, a_path)
+        end
+
+    store_owned (a_value: TOMELLE_VALUE; a_path: TOMELLE_PATH; a_expression: READABLE_STRING_GENERAL)
+        local
+            l_old: detachable TOMELLE_VALUE
+            l_key: TOMELLE_KEY
+            l_entry: TOMELLE_ENTRY
+        do
+            l_old := value (a_path)
+            put_owned (a_value, a_path)
+            if attached l_old as l_previous then
+                replace_physical_value (l_previous, a_value)
+            else
+                create l_key.make_parsed (a_expression, a_expression, " = ")
+                create l_entry.make (l_key, a_value)
+                internal_items.extend (l_entry)
+            end
+            is_modified := True
+        end
+
+    replace_physical_value (a_old, a_new: TOMELLE_VALUE)
+        do
+            across internal_items as l_item loop
+                if attached {TOMELLE_ENTRY} l_item as l_entry and then l_entry.value = a_old then
+                    l_entry.replace (a_new)
+                end
+            end
+        end
+
+    remove_physical_value (a_value: TOMELLE_VALUE)
+        do
+            from internal_items.start until internal_items.after loop
+                if attached {TOMELLE_ENTRY} internal_items.item as l_entry and then l_entry.value = a_value then
+                    internal_items.remove
+                else
+                    internal_items.forth
+                end
+            end
+        end
+
+    expression_for_path (a_path: TOMELLE_PATH): STRING_32
+        local
+            i: INTEGER
+            l_key: TOMELLE_KEY
+        do
+            create Result.make_empty
+            from i := 1 until i > a_path.count loop
+                if i > 1 then Result.extend ('.') end
+                create l_key.make (a_path [i])
+                Result.append (l_key.representation)
+                i := i + 1
+            end
+        end
+
+    cloned_counterpart (a_target, a_source, a_copy: TOMELLE_VALUE): detachable TOMELLE_VALUE
+            -- Value in `a_copy` corresponding by position to `a_target` in `a_source`.
+        local
+            i: INTEGER
+        do
+            if a_source = a_target then
+                Result := a_copy
+            elseif attached {TOMELLE_TABLE} a_source as l_source_table and then
+                attached {TOMELLE_TABLE} a_copy as l_copy_table
+            then
+                across l_source_table.entries as l_entry until Result /= Void loop
+                    check attached l_copy_table [l_entry.key.value] as l_copy_value then
+                        Result := cloned_counterpart (a_target, l_entry.value, l_copy_value)
+                    end
+                end
+            elseif attached {TOMELLE_ARRAY} a_source as l_source_array and then
+                attached {TOMELLE_ARRAY} a_copy as l_copy_array
+            then
+                from i := 1 until i > l_source_array.count or else Result /= Void loop
+                    Result := cloned_counterpart (a_target, l_source_array [i], l_copy_array [i])
+                    i := i + 1
+                end
+            end
         end
 
     model_builder: TOMELLE_MODEL_BUILDER

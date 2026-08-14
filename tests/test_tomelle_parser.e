@@ -44,16 +44,20 @@ feature -- Test
     test_mutable_document
         local
             document, copied: TOMELLE_DOCUMENT
+            writer: TOMELLE_WRITER
         do
             create document.make
             document.put_integer_at (8080, "server.port")
             document.put_string_at ("localhost", "server.host")
-            assert_true ("integer stored", attached document.value_at ("server.port") as v and then v.is_integer and then v.as_integer = 8080)
+            assert_true ("integer stored", attached {TOMELLE_INTEGER} document.value_at ("server.port") as v and then v.value = 8080)
             document.table_at ("server").put_boolean (True, "enabled")
-            assert_true ("live nested table", attached document.value_at ("server.enabled") as v and then v.as_boolean)
+            assert_true ("live nested table", attached {TOMELLE_BOOLEAN} document.value_at ("server.enabled") as v and then v.value)
             copied := document.independent_copy
             copied.put_integer_at (9090, "server.port")
-            assert_true ("copy independent", attached document.value_at ("server.port") as v and then v.as_integer = 8080)
+            assert_true ("copy independent", attached {TOMELLE_INTEGER} document.value_at ("server.port") as v and then v.value = 8080)
+            create writer.make
+            assert_true ("copy rendering keeps updated value",
+                writer.serialized (copied).has_substring ("9090"))
             document.remove_at ("server.host")
             document.remove_at ("server.host")
             assert_false ("idempotent removal", document.has_at ("server.host"))
@@ -66,9 +70,9 @@ feature -- Test
             create parser.make
             parser.parse_string ("title = %"Tomelle%"%N[server]%Nport = 8080%Nenabled = true%Nvalues = [1, %"two%", false]%N")
             assert_true ("parse successful", parser.is_successful)
-            assert_true ("title", attached parser.document as d and then attached d.value_at ("title") as v and then v.as_string.same_string_general ("Tomelle"))
-            assert_true ("nested integer", attached parser.document as d and then attached d.value_at ("server.port") as v and then v.as_integer = 8080)
-            assert_true ("array", attached parser.document as d and then attached d.value_at ("server.values") as v and then v.is_array and then v.as_array.count = 3)
+            assert_true ("title", attached parser.document as d and then attached {TOMELLE_STRING} d.value_at ("title") as v and then v.value.same_string_general ("Tomelle"))
+            assert_true ("nested integer", attached parser.document as d and then attached {TOMELLE_INTEGER} d.value_at ("server.port") as v and then v.value = 8080)
+            assert_true ("array", attached parser.document as d and then attached {TOMELLE_ARRAY} d.value_at ("server.values") as v and then v.count = 3)
         end
 
     test_duplicate_key_error
@@ -102,7 +106,7 @@ feature -- Test
             create parser.make
             parser.parse_string (text)
             assert_true ("serialized text parses", parser.is_successful)
-            assert_true ("round-trip array", attached parser.document as d and then attached d.value_at ("values") as v and then v.as_array.count = 2)
+            assert_true ("round-trip array", attached parser.document as d and then attached {TOMELLE_ARRAY} d.value_at ("values") as v and then v.count = 2)
         end
 
     test_expanded_defaults_are_valid
@@ -132,11 +136,11 @@ feature -- Test
                 "hex = 0xDEAD_BEEF%N" +
                 "special = inf%N")
             assert_true ("temporal parse", parser.is_successful)
-            assert_true ("date type", attached parser.document as d and then attached d.value_at ("date") as v and then v.is_local_date and then v.as_local_date.day = 9)
-            assert_true ("fraction preserved", attached parser.document as d and then attached d.value_at ("time") as v and then v.is_local_time and then v.as_local_time.fractional_digit_count = 4)
-            assert_true ("offset type", attached parser.document as d and then attached d.value_at ("offset") as v and then v.is_offset_date_time and then v.as_offset_date_time.offset_minutes = 180)
-            assert_true ("based integer", attached parser.document as d and then attached d.value_at ("hex") as v and then v.as_integer = 3735928559)
-            assert_true ("infinity", attached parser.document as d and then attached d.value_at ("special") as v and then v.as_float.is_positive_infinity)
+            assert_true ("date type", attached parser.document as d and then attached {TOMELLE_LOCAL_DATE_VALUE} d.value_at ("date") as v and then v.value.day = 9)
+            assert_true ("fraction preserved", attached parser.document as d and then attached {TOMELLE_LOCAL_TIME_VALUE} d.value_at ("time") as v and then v.value.fractional_digit_count = 4)
+            assert_true ("offset type", attached parser.document as d and then attached {TOMELLE_OFFSET_DATE_TIME_VALUE} d.value_at ("offset") as v and then v.value.offset_minutes = 180)
+            assert_true ("based integer", attached parser.document as d and then attached {TOMELLE_INTEGER} d.value_at ("hex") as v and then v.value = 3735928559)
+            assert_true ("infinity", attached parser.document as d and then attached {TOMELLE_FLOAT} d.value_at ("special") as v and then v.value.is_positive_infinity)
         end
 
     test_utf_8_file_round_trip
@@ -156,7 +160,7 @@ feature -- Test
             create parser.make
             parser.parse_file (path)
             assert_true ("read successful", parser.is_successful)
-            assert_true ("unicode preserved", attached parser.document as d and then attached d.value_at ("message") as v and then v.as_string.same_string_general ("Привет"))
+            assert_true ("unicode preserved", attached parser.document as d and then attached {TOMELLE_STRING} d.value_at ("message") as v and then v.value.same_string_general ("Привет"))
             create file.make_with_path (path)
             if file.exists then file.delete end
         end
@@ -182,8 +186,8 @@ feature -- Test
                 "[[servers]]%Nname = %"alpha%"%Nport = 8001%N" +
                 "[[servers]]%Nname = %"beta%"%Nport = 8002%N")
             assert_true ("array of tables parsed", parser.is_successful)
-            assert_true ("two tables", attached parser.document as d and then attached d.value_at ("servers") as v and then v.is_array and then v.as_array.count = 2)
-            assert_true ("second table", attached parser.document as d and then attached d.value_at ("servers") as v and then attached v.as_array [2].as_table ["name"] as n and then n.as_string.same_string_general ("beta"))
+            assert_true ("two tables", attached parser.document as d and then attached {TOMELLE_ARRAY} d.value_at ("servers") as v and then v.count = 2)
+            assert_true ("second table", attached parser.document as d and then attached {TOMELLE_ARRAY} d.value_at ("servers") as v and then attached {TOMELLE_TABLE} v [2] as table and then attached {TOMELLE_STRING} table ["name"] as n and then n.value.same_string_general ("beta"))
         end
 
     test_multiline_values
@@ -195,8 +199,8 @@ feature -- Test
                 "message = %"%"%"%Nhello%Nworld%"%"%"%N" +
                 "numbers = [%N  1, # first%N  2,%N  3%N]%N")
             assert_true ("multiline parse", parser.is_successful)
-            assert_true ("multiline string", attached parser.document as d and then attached d.value_at ("message") as v and then v.as_string.same_string_general ("hello%Nworld"))
-            assert_true ("multiline array", attached parser.document as d and then attached d.value_at ("numbers") as v and then v.as_array.count = 3)
+            assert_true ("multiline string", attached parser.document as d and then attached {TOMELLE_STRING} d.value_at ("message") as v and then v.value.same_string_general ("hello%Nworld"))
+            assert_true ("multiline array", attached parser.document as d and then attached {TOMELLE_ARRAY} d.value_at ("numbers") as v and then v.count = 3)
         end
 
     test_invalid_utf_8_file
@@ -236,8 +240,8 @@ feature -- Test
             create parser.make
             parser.parse_string (writer.serialized (document))
             assert_true ("writer result parses", parser.is_successful)
-            assert_true ("float remains float", attached parser.document as d and then attached d.value_at ("float") as v and then v.is_float)
-            assert_true ("date remains date", attached parser.document as d and then attached d.value_at ("date") as v and then v.is_local_date)
+            assert_true ("float remains float", attached parser.document as d and then attached {TOMELLE_FLOAT} d.value_at ("float"))
+            assert_true ("date remains date", attached parser.document as d and then attached {TOMELLE_LOCAL_DATE_VALUE} d.value_at ("date"))
         end
 
     test_invalid_numeric_forms
@@ -260,23 +264,23 @@ feature -- Test
             create parser.make
             parser.parse_string ("point = { coordinates.x = 1, coordinates.y = 2, %"literal.dot%" = true }%N")
             assert_true ("inline table parsed", parser.is_successful)
-            assert_true ("nested inline value", attached parser.document as d and then attached d.value_at ("point.coordinates.x") as v and then v.as_integer = 1)
-            assert_true ("quoted literal dot", attached parser.document as d and then attached d.value_at ("point.%"literal.dot%"") as v and then v.as_boolean)
+            assert_true ("nested inline value", attached parser.document as d and then attached {TOMELLE_INTEGER} d.value_at ("point.coordinates.x") as v and then v.value = 1)
+            assert_true ("quoted literal dot", attached parser.document as d and then attached {TOMELLE_BOOLEAN} d.value_at ("point.%"literal.dot%"") as v and then v.value)
         end
 
-    test_float_codec_is_canonical
+    test_float_codec_preserves_source_spelling
         local
             parser: TOMELLE_PARSER
             writer: TOMELLE_WRITER
-            factory: TOMELLE_VALUE_FACTORY
+            codec: TOMELLE_FLOAT_CODEC
             text: STRING_32
         do
-            create factory.make
-            assert_true ("integer-shaped decimal accepted", factory.is_valid_float_text ("42"))
-            assert_true ("signed exponent accepted", factory.is_valid_float_text ("-1.25e+3"))
-            assert_false ("infinity has value constructor", factory.is_valid_float_text ("inf"))
-            assert_false ("incomplete exponent rejected", factory.is_valid_float_text ("1e"))
-            assert_false ("decimal point needs fraction", factory.is_valid_float_text ("1."))
+            create codec
+            assert_true ("integer-shaped decimal accepted", codec.is_valid_finite_text ("42"))
+            assert_true ("signed exponent accepted", codec.is_valid_finite_text ("-1.25e+3"))
+            assert_false ("infinity has value constructor", codec.is_valid_finite_text ("inf"))
+            assert_false ("incomplete exponent rejected", codec.is_valid_finite_text ("1e"))
+            assert_false ("decimal point needs fraction", codec.is_valid_finite_text ("1."))
             create parser.make
             parser.parse_string (
                 "fixed = 1.0%N" +
@@ -285,21 +289,21 @@ feature -- Test
             assert_true ("float source parses", parser.is_successful)
             assert_true ("equivalent spellings canonicalized",
                 attached parser.document as d and then
-                attached d.value_at ("fixed") as fixed and then
-                attached d.value_at ("exponent") as exponent and then
-                fixed.as_float_text.same_string (exponent.as_float_text))
+                attached {TOMELLE_FLOAT} d.value_at ("fixed") as fixed and then
+                attached {TOMELLE_FLOAT} d.value_at ("exponent") as exponent and then
+                fixed.canonical_text.same_string (exponent.canonical_text))
             assert_true ("large exact float preserved",
                 attached parser.document as d and then
-                attached d.value_at ("precise") as precise and then
-                precise.as_float_text.same_string_general ("9007199254740991.0"))
+                attached {TOMELLE_FLOAT} d.value_at ("precise") as precise and then
+                precise.canonical_text.same_string_general ("9007199254740991.0"))
             create writer.make
             check attached parser.document as d then
                 text := writer.serialized (d)
             end
-            assert_true ("writer uses canonical floats",
+            assert_true ("writer preserves parsed float spelling",
                 text.has_substring ("fixed = 1.0") and then
-                text.has_substring ("exponent = 1.0") and then
-                text.has_substring ("precise = 9007199254740991.0"))
+                text.has_substring ("exponent = 1e0") and then
+                text.has_substring ("precise = 9_007_199_254_740_991.0"))
         end
 
     test_integer_range_errors
@@ -341,6 +345,34 @@ feature -- Test
             parser.parse_string ("%"\U00110000%" = 1%N")
             assert_true ("out of range key rejected", parser.has_error)
             assert_integers_equal ("out of range key code", 6, parser.error (1).code.value)
+        end
+
+    test_toml_1_1_quoted_keys
+            -- Empty quoted keys and the TOML 1.1 escape forms are valid.
+        local
+            parser: TOMELLE_PARSER
+            l_escape_key: STRING_32
+        do
+            create parser.make
+            create l_escape_key.make (1)
+            l_escape_key.extend ((27).to_character_32)
+            parser.parse_string ("%"%" = 1%N")
+            assert_true ("empty quoted key accepted", parser.is_successful)
+            assert_true ("empty key value",
+                attached parser.document as d and then
+                attached {TOMELLE_INTEGER} d.root [""] as v and then v.value = 1)
+
+            parser.parse_string ("%"\e%" = 2%N")
+            assert_true ("escape key accepted", parser.is_successful)
+            assert_true ("escape key decoded",
+                attached parser.document as d and then
+                attached {TOMELLE_INTEGER} d.root [l_escape_key] as v and then v.value = 2)
+
+            parser.parse_string ("%"\x41%" = 3%N")
+            assert_true ("short unicode escape key accepted", parser.is_successful)
+            assert_true ("short unicode escape key decoded",
+                attached parser.document as d and then
+                attached {TOMELLE_INTEGER} d.root ["A"] as v and then v.value = 3)
         end
 
     test_traversal_results_are_snapshots
@@ -411,6 +443,114 @@ feature -- Test
             assert_true ("unwritable classified",
                 attached writer.error as write_error and then
                 write_error.code = write_error.code.output_unwritable)
+        end
+
+    test_lossless_round_trip_and_local_mutation
+        local
+            parser: TOMELLE_PARSER
+            writer: TOMELLE_WRITER
+            source, changed: STRING_32
+            reparsed: TOMELLE_PARSE_RESULT
+        do
+            source := "# heading%N%N" +
+                "  title   =   'old'   # keep this%N" +
+                "numbers = [%N  1, # first%N  2,%N]%N"
+            create parser.make
+            parser.parse_string (source)
+            assert_true ("lossless source parses", parser.is_successful)
+            create writer.make
+            check attached parser.document as document then
+                assert_true ("comments and whitespace round-trip",
+                    writer.serialized (document).same_string (source))
+                assert_integers_equal ("physical items retained", 4, document.item_count)
+                check attached {TOMELLE_STRING} document.value_at ("title") as title then
+                    title.set_value ("new")
+                end
+                check attached {TOMELLE_ARRAY} document.value_at ("numbers") as numbers and then
+                    attached {TOMELLE_INTEGER} numbers [1] as first_number
+                then
+                    first_number.set_value (9)
+                end
+                changed := writer.serialized (document)
+                assert_true ("entry spacing and comment retained",
+                    changed.has_substring ("  title   =   'new'   # keep this"))
+                assert_true ("array layout and comments retained",
+                    changed.has_substring ("numbers = [%N  9, # first%N  2,%N]"))
+                reparsed := parser.parsed_string (changed)
+                assert_true ("lossless edit reparses equivalently",
+                    attached reparsed.document as reparsed_document and then
+                    reparsed_document.is_equal (document))
+            end
+        end
+
+    test_lossless_tables_dotted_keys_and_array_tables
+        local
+            parser: TOMELLE_PARSER
+            writer: TOMELLE_WRITER
+            source, changed: STRING_32
+        do
+            source := "[database] # section%N" +
+                "connection.max   = 10 # dotted%N" +
+                "inline = { x=1, y = 'two' }%N%N" +
+                "[[servers]]%Nname = 'alpha'%N" +
+                "[[servers]]%Nname = 'beta'%N"
+            create parser.make
+            parser.parse_string (source)
+            assert_true ("tables parse", parser.is_successful)
+            check attached parser.document as document then
+                check attached {TOMELLE_INTEGER} document.value_at ("database.connection.max") as maximum then
+                    maximum.set_value (20)
+                end
+                check attached {TOMELLE_TABLE} document.value_at ("database.inline") as inline_table and then
+                    attached {TOMELLE_INTEGER} inline_table ["x"] as x
+                then
+                    x.set_value (7)
+                end
+                document.table_at ("database.connection").put_integer (21, "max")
+                check attached {TOMELLE_ARRAY} document.value_at ("servers") as servers and then
+                    attached {TOMELLE_TABLE} servers [2] as server_table and then
+                    attached {TOMELLE_STRING} server_table ["name"] as second_name
+                then
+                    second_name.set_value ("gamma")
+                end
+                create writer.make
+                changed := writer.serialized (document)
+                assert_true ("header and dotted-key style retained",
+                    changed.has_substring ("[database] # section%Nconnection.max   = 21 # dotted"))
+                assert_true ("inline-table spacing retained",
+                    changed.has_substring ("inline = { x=7, y = 'two' }"))
+                assert_true ("array-table structure retained",
+                    changed.has_substring ("[[servers]]%Nname = 'gamma'"))
+                document.table_at ("database").put_boolean (True, "new_flag")
+                changed := writer.serialized (document)
+                assert_true ("direct table insertion is never lost",
+                    changed.has_substring ("new_flag = true"))
+            end
+        end
+
+    test_document_mutation_and_canonical_rendering
+        local
+            parser: TOMELLE_PARSER
+            writer: TOMELLE_WRITER
+            preserved, canonical: STRING_32
+        do
+            create parser.make
+            parser.parse_string ("value  =  1_000 # units%Nratio = 1e0%N")
+            assert_true ("source parses", parser.is_successful)
+            check attached parser.document as document then
+                document.put_integer_at (2000, "value")
+                document.put_boolean_at (True, "enabled")
+                create writer.make
+                preserved := writer.serialized (document)
+                assert_true ("document replacement retains surrounding style",
+                    preserved.has_substring ("value  =  2000 # units"))
+                assert_true ("new entry is emitted", preserved.has_substring ("enabled = true"))
+                canonical := writer.serialized_canonical (document)
+                assert_true ("canonical form ignores retained trivia",
+                    canonical.has_substring ("value = 2000") and then
+                    canonical.has_substring ("ratio = 1.0") and then
+                    not canonical.has ('#'))
+            end
         end
 
 end

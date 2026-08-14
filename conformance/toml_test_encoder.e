@@ -65,7 +65,7 @@ feature {NONE} -- Conversion
                     if attached l_child as v then l_array.extend (v) else l_valid := False end
                     i := i + 1
                 end
-                if l_valid then Result := value_factory.new_array (l_array) end
+                if l_valid then Result := l_array end
             elseif a_json.is_object then
                 if is_tagged_value (a_json) then Result := scalar_value (a_json)
                 else
@@ -75,7 +75,7 @@ feature {NONE} -- Conversion
                         if attached l_child as v then l_table.put (v, a_json.object_keys [i]) else l_valid := False end
                         i := i + 1
                     end
-                    if l_valid then Result := value_factory.new_table (l_table) end
+                    if l_valid then Result := l_table end
                 end
             end
         end
@@ -83,6 +83,7 @@ feature {NONE} -- Conversion
     scalar_value (a_json: TOML_TEST_JSON_VALUE): detachable TOMELLE_VALUE
         local
             l_parser: TOMELLE_PARSER
+            l_parse_result: TOMELLE_PARSE_RESULT
             l_type, l_text: STRING_32
         do
             check attached a_json.object_value ("type") as l_type_node and
@@ -90,21 +91,21 @@ feature {NONE} -- Conversion
             then
                 l_type := l_type_node.as_string
                 l_text := l_value_node.as_string
-                if l_type.same_string ("string") then Result := value_factory.new_string (l_text)
+                if l_type.same_string ("string") then create {TOMELLE_STRING} Result.make (l_text)
                 elseif l_type.same_string ("float") and then not l_text.same_string ("inf") and then
                     not l_text.same_string ("+inf") and then not l_text.same_string ("-inf") and then
                     not l_text.same_string ("nan") and then not l_text.same_string ("+nan") and then
                     not l_text.same_string ("-nan")
                 then
-                    Result := value_factory.new_float_from_text (l_text)
+                    create {TOMELLE_FLOAT} Result.make_from_source (l_text)
                 elseif l_type.same_string ("integer") or l_type.same_string ("float") or
                     l_type.same_string ("bool") or l_type.same_string ("datetime") or
                     l_type.same_string ("datetime-local") or l_type.same_string ("date-local") or
                     l_type.same_string ("time-local")
                 then
                     create l_parser.make
-                    l_parser.parse_string ("value = " + l_text + "%N")
-                    if attached l_parser.document as l_document and then attached l_document.root ["value"] as l_value then
+                    l_parse_result := l_parser.parsed_string ("value = " + l_text + "%N")
+                    if attached l_parse_result.document as l_document and then attached l_document.root ["value"] as l_value then
                             Result := l_value
                     end
                 end
@@ -116,11 +117,6 @@ feature {NONE} -- Conversion
             Result := a_json.is_object and then a_json.object_keys.count = 2 and then
                 attached a_json.object_value ("type") as l_type and then l_type.is_string and then
                 attached a_json.object_value ("value") as l_value and then l_value.is_string
-        end
-
-    value_factory: TOMELLE_VALUE_FACTORY
-        once
-            create Result.make
         end
 
 feature {NONE} -- Failure

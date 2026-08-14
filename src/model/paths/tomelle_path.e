@@ -119,8 +119,15 @@ feature {NONE} -- Implementation
                             when 'n' then l_key.extend ('%N')
                             when 'f' then l_key.extend ('%F')
                             when 'r' then l_key.extend ('%R')
-                            when 'u', 'U' then
-                                if a_expression [i] = 'u' then l_digits := 4 else l_digits := 8 end
+                            when 'e' then l_key.extend ((27).to_character_32)
+                            when 'x', 'u', 'U' then
+                                if a_expression [i] = 'x' then
+                                    l_digits := 2
+                                elseif a_expression [i] = 'u' then
+                                    l_digits := 4
+                                else
+                                    l_digits := 8
+                                end
                                 l_code := 0
                                 from j := 1 until j > l_digits loop
                                     l_code := l_code * 16 + hex_value (a_expression [i + j])

@@ -23,7 +23,7 @@ feature -- Parsing
                 l_inner := lexical.substring (l_text, 4, l_text.count - 3)
                 if not l_inner.is_empty and then l_inner [1] = '%N' then l_inner.remove (1) end
                 if is_valid_basic_string (l_inner, True) then
-                    Result := model_builder.new_parser_string (parser_encoded_string (decoded_basic_string (l_inner)))
+                    Result := model_builder.new_parser_string (parser_encoded_string (decoded_basic_string (l_inner)), l_text)
                 end
             elseif l_text.count >= 6 and then l_text.substring (1, 3).same_string ("%'%'%'") and then
                 l_text.substring (l_text.count - 2, l_text.count).same_string ("%'%'%'")
@@ -31,17 +31,17 @@ feature -- Parsing
                 l_inner := lexical.substring (l_text, 4, l_text.count - 3)
                 if not l_inner.is_empty and then l_inner [1] = '%N' then l_inner.remove (1) end
                 if is_valid_literal_string (l_inner, True) then
-                    Result := model_builder.new_parser_string (parser_encoded_string (l_inner))
+                    Result := model_builder.new_parser_string (parser_encoded_string (l_inner), l_text)
                 end
             elseif l_text.count >= 2 and then l_text [1] = '%"' and then l_text [l_text.count] = '%"' then
                 l_inner := lexical.substring (l_text, 2, l_text.count - 1)
                 if is_valid_basic_string (l_inner, False) then
-                    Result := model_builder.new_parser_string (parser_encoded_string (decoded_basic_string (l_inner)))
+                    Result := model_builder.new_parser_string (parser_encoded_string (decoded_basic_string (l_inner)), l_text)
                 end
             elseif l_text.count >= 2 and then l_text [1] = '%'' and then l_text [l_text.count] = '%'' then
                 l_inner := lexical.substring (l_text, 2, l_text.count - 1)
                 if is_valid_literal_string (l_inner, False) then
-                    Result := model_builder.new_parser_string (parser_encoded_string (l_inner))
+                    Result := model_builder.new_parser_string (parser_encoded_string (l_inner), l_text)
                 end
             end
         end

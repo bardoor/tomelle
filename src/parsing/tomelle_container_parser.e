@@ -9,7 +9,7 @@ create
 
 feature {NONE} -- Initialization
 
-    make do create value_factory.make end
+    make do end
 
 feature -- Parsing
 
@@ -17,7 +17,7 @@ feature -- Parsing
         require
             delimited: a_text.count >= 2 and then a_text [1] = '[' and then a_text [a_text.count] = ']'
         local
-            l_inner, l_part: STRING_32
+            l_inner, l_part, l_parse_text: STRING_32
             l_parts: ARRAYED_LIST [STRING_32]
             l_array: TOMELLE_ARRAY
             l_value: detachable TOMELLE_VALUE
@@ -26,9 +26,11 @@ feature -- Parsing
         do
             create l_array.make
             l_valid := True
-            l_inner := lexical.substring (a_text, 2, a_text.count - 1)
+            l_parse_text := lexical.without_comments (a_text)
+            l_inner := lexical.substring (l_parse_text, 2, l_parse_text.count - 1)
             if l_inner.is_empty then
-                Result := value_factory.new_array (l_array)
+                l_array.set_parsed_representation (a_text, l_parse_text)
+                Result := l_array
             elseif not lexical.is_only_separator (l_inner, ',') then
                 l_parts := lexical.split_top_level (l_inner, ',')
                 from i := 1 until i > l_parts.count loop
@@ -41,7 +43,10 @@ feature -- Parsing
                     end
                     i := i + 1
                 end
-                if l_valid then Result := value_factory.new_array (l_array) end
+                if l_valid then
+                    l_array.set_parsed_representation (a_text, l_parse_text)
+                    Result := l_array
+                end
             end
         end
 
@@ -49,7 +54,7 @@ feature -- Parsing
         require
             delimited: a_text.count >= 2 and then a_text [1] = '{' and then a_text [a_text.count] = '}'
         local
-            l_inner, l_part, l_expression: STRING_32
+            l_inner, l_part, l_expression, l_parse_text: STRING_32
             l_parts: ARRAYED_LIST [STRING_32]
             l_table: TOMELLE_TABLE
             l_path: TOMELLE_PATH
@@ -62,9 +67,11 @@ feature -- Parsing
             create l_sealed.make (0)
             l_sealed.compare_objects
             l_valid := True
-            l_inner := lexical.substring (a_text, 2, a_text.count - 1)
+            l_parse_text := lexical.without_comments (a_text)
+            l_inner := lexical.substring (l_parse_text, 2, l_parse_text.count - 1)
             if l_inner.is_empty then
-                Result := value_factory.new_table (l_table)
+                l_table.set_parsed_representation (a_text, l_parse_text)
+                Result := l_table
             elseif not lexical.is_only_separator (l_inner, ',') then
                 l_parts := lexical.split_top_level (l_inner, ',')
                 from i := 1 until i > l_parts.count loop
@@ -83,14 +90,17 @@ feature -- Parsing
                                     not has_sealed_prefix (l_sealed, l_expression)
                                 then
                                     model_builder.put_owned (l_table, v, l_path)
-                                    if v.is_table then l_sealed.extend (canonical_expression (l_expression)) end
+                                    if attached {TOMELLE_TABLE} v then l_sealed.extend (canonical_expression (l_expression)) end
                                 else l_valid := False end
                             else l_valid := False end
                         else l_valid := False end
                     else l_valid := False end
                     i := i + 1
                 end
-                if l_valid then Result := value_factory.new_table (l_table) end
+                if l_valid then
+                    l_table.set_parsed_representation (a_text, l_parse_text)
+                    Result := l_table
+                end
             end
         end
 
@@ -132,7 +142,6 @@ feature {NONE} -- Parsers
     lexical: TOMELLE_LEXICAL_TOOLS once create Result end
     key_syntax: TOMELLE_KEY_SYNTAX once create Result.make end
     value_parser: TOMELLE_VALUE_PARSER once create Result.make end
-    value_factory: TOMELLE_VALUE_FACTORY
     model_builder: TOMELLE_MODEL_BUILDER once create Result end
 
 end

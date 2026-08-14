@@ -9,7 +9,7 @@ create
 
 feature {NONE} -- Initialization
 
-    make do create value_factory.make end
+    make do end
 
 feature -- Parsing
 
@@ -42,9 +42,11 @@ feature -- Parsing
                         "Invalid TOML string", 1)
                 end
             elseif l_text.same_string ("true") then
-                create Result.make_success (value_factory.new_boolean (True))
+                create {TOMELLE_BOOLEAN} l_value.make (True)
+                create Result.make_success (l_value)
             elseif l_text.same_string ("false") then
-                create Result.make_success (value_factory.new_boolean (False))
+                create {TOMELLE_BOOLEAN} l_value.make (False)
+                create Result.make_success (l_value)
             elseif l_text [1] = '[' then
                 if l_text.count < 2 or else l_text [l_text.count] /= ']' then
                     create Result.make_failure (error_codes.unexpected_end_of_input,
@@ -119,7 +121,6 @@ feature {NONE} -- Parsers
     number_parser: TOMELLE_NUMBER_PARSER once create Result.make end
     temporal_parser: TOMELLE_TEMPORAL_PARSER once create Result.make end
     container_parser: TOMELLE_CONTAINER_PARSER once create Result.make end
-    value_factory: TOMELLE_VALUE_FACTORY
     error_codes: TOMELLE_ERROR_CODE once create Result.default_create end
 
 end

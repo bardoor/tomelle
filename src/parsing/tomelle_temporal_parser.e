@@ -10,9 +10,7 @@ create
 feature {NONE} -- Initialization
 
     make
-        do
-            create value_factory.make
-        end
+        do end
 
 feature -- Parsing
 
@@ -38,7 +36,7 @@ feature -- Parsing
             end
             if a_text.count = 10 and l_valid then
                 create l_date.make (l_year, l_month, l_day)
-                Result := value_factory.new_local_date (l_date)
+                create {TOMELLE_LOCAL_DATE_VALUE} Result.make (l_date)
             else
                 if l_has_date and a_text.count >= 16 and then
                     (a_text [11] = 'T' or a_text [11] = 't' or a_text [11] = ' ')
@@ -100,12 +98,32 @@ feature -- Parsing
                             create l_date_time.make (l_date, l_time)
                             if l_has_offset then
                                 create l_offset.make (l_date_time, l_offset_minutes)
-                                Result := value_factory.new_offset_date_time (l_offset)
-                            else Result := value_factory.new_local_date_time (l_date_time) end
+                                create {TOMELLE_OFFSET_DATE_TIME_VALUE} Result.make (l_offset)
+                            else create {TOMELLE_LOCAL_DATE_TIME_VALUE} Result.make (l_date_time) end
                         elseif not l_has_offset then
-                            Result := value_factory.new_local_time (l_time)
+                            create {TOMELLE_LOCAL_TIME_VALUE} Result.make (l_time)
                         end
                     end
+                end
+            end
+            if attached Result as l_value then
+                Result := source_preserved (l_value, a_text)
+            end
+        end
+
+feature {NONE} -- Lossless construction
+
+    source_preserved (a_value: TOMELLE_VALUE; a_source: STRING_32): TOMELLE_VALUE
+        do
+            if attached {TOMELLE_OFFSET_DATE_TIME_VALUE} a_value as l_offset then
+                create {TOMELLE_OFFSET_DATE_TIME_VALUE} Result.make_parsed (l_offset.value, a_source)
+            elseif attached {TOMELLE_LOCAL_DATE_TIME_VALUE} a_value as l_date_time then
+                create {TOMELLE_LOCAL_DATE_TIME_VALUE} Result.make_parsed (l_date_time.value, a_source)
+            elseif attached {TOMELLE_LOCAL_DATE_VALUE} a_value as l_date then
+                create {TOMELLE_LOCAL_DATE_VALUE} Result.make_parsed (l_date.value, a_source)
+            else
+                check attached {TOMELLE_LOCAL_TIME_VALUE} a_value as l_time then
+                    create {TOMELLE_LOCAL_TIME_VALUE} Result.make_parsed (l_time.value, a_source)
                 end
             end
         end
@@ -118,7 +136,5 @@ feature {NONE} -- Validation
             Result := not a_text.is_empty
             from i := 1 until i > a_text.count or else not Result loop Result := a_text [i].is_digit; i := i + 1 end
         end
-
-    value_factory: TOMELLE_VALUE_FACTORY
 
 end

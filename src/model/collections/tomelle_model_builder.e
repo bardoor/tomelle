@@ -17,8 +17,8 @@ feature -- Status
             l_table := a_root
             from i := 1 until i >= a_path.count or else not Result loop
                 if attached l_table [a_path [i]] as l_value then
-                    if l_value.is_table then
-                        l_table := l_value.as_table
+                    if attached {TOMELLE_TABLE} l_value as l_nested_table then
+                        l_table := l_nested_table
                     else
                         Result := False
                     end
@@ -34,12 +34,15 @@ feature -- Status
 
 feature -- Construction
 
-    new_parser_string (a_encoded_value: STRING_32): TOMELLE_VALUE
+    new_parser_string (a_encoded_value, a_source: STRING_32): TOMELLE_VALUE
             -- String value from the parser's compiler-neutral encoding.
+        local
+            l_decoded: TOMELLE_STRING
         do
-            create Result.make_parser_string (a_encoded_value)
+            create l_decoded.make_parser_encoded (a_encoded_value)
+            create {TOMELLE_STRING} Result.make_parsed (l_decoded.value, a_source)
         ensure
-            correct_type: Result.is_string
+            correct_type: attached {TOMELLE_STRING} Result
         end
 
     put_owned (a_root: TOMELLE_TABLE; a_value: TOMELLE_VALUE; a_path: TOMELLE_PATH)
@@ -49,17 +52,17 @@ feature -- Construction
         local
             i: INTEGER
             l_table, l_new_table: TOMELLE_TABLE
-            l_wrapper: TOMELLE_VALUE
         do
             l_table := a_root
             from i := 1 until i >= a_path.count loop
                 if attached l_table [a_path [i]] as l_value then
-                    l_table := l_value.as_table
+                    check attached {TOMELLE_TABLE} l_value as l_nested_table then
+                        l_table := l_nested_table
+                    end
                 else
                     create l_new_table.make
-                    create l_wrapper.make_table (l_new_table)
-                    l_table.put_owned (l_wrapper, a_path [i])
-                    l_table := l_wrapper.as_table
+                    l_table.put_owned (l_new_table, a_path [i])
+                    l_table := l_new_table
                 end
                 i := i + 1
             end

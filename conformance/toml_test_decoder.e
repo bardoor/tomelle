@@ -12,18 +12,19 @@ feature {NONE} -- Entry point
     make
         local
             l_parser: TOMELLE_PARSER
+            l_parse_result: TOMELLE_PARSE_RESULT
             l_io: TOML_TEST_IO
             l_exceptions: EXCEPTIONS
         do
             create l_io
             if attached l_io.decoded_utf_8 (l_io.stdin_bytes) as l_source then
                 create l_parser.make
-                l_parser.parse_string (l_source)
-                if attached l_parser.document as l_document then
+                l_parse_result := l_parser.parsed_string (l_source)
+                if attached l_parse_result.document as l_document then
                     l_io.write_stdout (serialized_table (l_document.root))
                     l_io.write_stdout ("%N")
                 else
-                    if l_parser.error_count > 0 then l_io.write_stderr (l_parser.error (1).message)
+                    if l_parse_result.error_count > 0 then l_io.write_stderr (l_parse_result.error (1).message)
                     else l_io.write_stderr ("Unable to parse TOML") end
                     create l_exceptions
                     l_exceptions.die (1)
@@ -68,37 +69,39 @@ feature {NONE} -- Tagged JSON
             l_type, l_text: STRING_32
             l_date_time: TOMELLE_LOCAL_DATE_TIME
         do
-            if a_value.is_table then
-                Result := serialized_table (a_value.as_table)
-            elseif a_value.is_array then
-                Result := serialized_array (a_value.as_array)
-            elseif a_value.is_string then
-                Result := "{%"type%":%"string%",%"value%":" + json_string (a_value.as_string) + "}"
+            if attached {TOMELLE_TABLE} a_value as l_table then
+                Result := serialized_table (l_table)
+            elseif attached {TOMELLE_ARRAY} a_value as l_array then
+                Result := serialized_array (l_array)
+            elseif attached {TOMELLE_STRING} a_value as l_string then
+                Result := "{%"type%":%"string%",%"value%":" + json_string (l_string.value) + "}"
             else
-                if a_value.is_integer then
+                if attached {TOMELLE_INTEGER} a_value as l_integer then
                     l_type := "integer"
-                    l_text := a_value.as_integer.out
-                elseif a_value.is_float then
+                    l_text := l_integer.value.out
+                elseif attached {TOMELLE_FLOAT} a_value as l_float then
                     l_type := "float"
-                    l_text := a_value.as_float_text.as_string_32
-                elseif a_value.is_boolean then
+                    l_text := l_float.canonical_text.twin
+                elseif attached {TOMELLE_BOOLEAN} a_value as l_boolean then
                     l_type := "bool"
-                    if a_value.as_boolean then l_text := "true" else l_text := "false" end
-                elseif a_value.is_local_date then
+                    if l_boolean.value then l_text := "true" else l_text := "false" end
+                elseif attached {TOMELLE_LOCAL_DATE_VALUE} a_value as l_date then
                     l_type := "date-local"
-                    l_text := date_text (a_value.as_local_date)
-                elseif a_value.is_local_time then
+                    l_text := date_text (l_date.value)
+                elseif attached {TOMELLE_LOCAL_TIME_VALUE} a_value as l_time then
                     l_type := "time-local"
-                    l_text := time_text (a_value.as_local_time)
-                elseif a_value.is_local_date_time then
+                    l_text := time_text (l_time.value)
+                elseif attached {TOMELLE_LOCAL_DATE_TIME_VALUE} a_value as l_local_date_time then
                     l_type := "datetime-local"
-                    l_date_time := a_value.as_local_date_time
+                    l_date_time := l_local_date_time.value
                     l_text := date_text (l_date_time.date) + "T" + time_text (l_date_time.time)
                 else
                     l_type := "datetime"
-                    l_date_time := a_value.as_offset_date_time.local_date_time
-                    l_text := date_text (l_date_time.date) + "T" + time_text (l_date_time.time) +
-                        offset_text (a_value.as_offset_date_time.offset_minutes)
+                    check attached {TOMELLE_OFFSET_DATE_TIME_VALUE} a_value as l_offset then
+                        l_date_time := l_offset.value.local_date_time
+                        l_text := date_text (l_date_time.date) + "T" + time_text (l_date_time.time) +
+                            offset_text (l_offset.value.offset_minutes)
+                    end
                 end
                 Result := "{%"type%":" + json_string (l_type) + ",%"value%":" + json_string (l_text) + "}"
             end

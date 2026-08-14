@@ -93,8 +93,9 @@ feature {TOMELLE_PATH} -- Implementation
         do
             Result := a_character = 'b' or else a_character = 't' or else
                 a_character = 'n' or else a_character = 'f' or else
-                a_character = 'r' or else a_character = '%"' or else
-                a_character = '\' or else a_character = 'u' or else a_character = 'U'
+                a_character = 'r' or else a_character = 'e' or else
+                a_character = '%"' or else a_character = '\' or else
+                a_character = 'x' or else a_character = 'u' or else a_character = 'U'
         end
 
     is_hex_character (a_character: CHARACTER_32): BOOLEAN

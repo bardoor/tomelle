@@ -24,6 +24,9 @@ feature -- Building
             l_statement: detachable TOMELLE_STATEMENT
             l_current_table: TOMELLE_TABLE
             l_section: STRING_32
+            l_header_item: TOMELLE_HEADER
+            l_comment_item: TOMELLE_COMMENT
+            l_whitespace_item: TOMELLE_WHITESPACE
         do
             definitions.reset
             l_lines := scanner.scan (a_source)
@@ -33,21 +36,34 @@ feature -- Building
                 l_line := l_lines.item
                 l_statement := statement_parser.parse (l_line)
                 if attached {TOMELLE_ARRAY_TABLE_HEADER} l_statement as h then
+                    create l_header_item.make (l_line.source_text, True)
+                    a_document.append_item (l_header_item)
                     l_section := h.expression
                     if attached open_array_table (a_document.root, h) as l_opened then
                         l_current_table := l_opened
                     end
                 elseif attached {TOMELLE_TABLE_HEADER} l_statement as h then
+                    create l_header_item.make (l_line.source_text, False)
+                    a_document.append_item (l_header_item)
                     l_section := h.expression
                     if attached open_table (a_document.root, h) as l_opened then
                         l_current_table := l_opened
                     end
                 elseif attached {TOMELLE_KEY_VALUE_STATEMENT} l_statement as s then
-                    put_statement (l_current_table, l_section, s)
+                    put_statement (a_document, l_current_table, l_section, s, l_line.source_text)
                 elseif not lexical.trimmed (lexical.without_comment (l_line.text)).is_empty then
                     report_invalid_statement (l_line)
+                elseif lexical.trimmed (l_line.source_text).is_empty then
+                    create l_whitespace_item.make (l_line.source_text)
+                    a_document.append_item (l_whitespace_item)
+                else
+                    create l_comment_item.make (l_line.source_text)
+                    a_document.append_item (l_comment_item)
                 end
                 l_lines.forth
+            end
+            if not errors.has_error then
+                a_document.set_source_text (a_source)
             end
         end
 
@@ -84,21 +100,31 @@ feature {NONE} -- Statements
                 definitions.reset_explicit_descendants (l_key)
                 create l_table.make
                 l_array.extend_table (l_table)
-                Result := l_array.last.as_table
+                check attached {TOMELLE_TABLE} l_array.last as l_stored_table then
+                    Result := l_stored_table
+                end
             else
                 errors.add (error_codes.duplicate_key, "Array-of-tables conflicts with an existing value", Void,
                     a_header.position.line, 1)
             end
         end
 
-    put_statement (a_current_table: TOMELLE_TABLE; a_section: STRING_32; a_statement: TOMELLE_KEY_VALUE_STATEMENT)
+    put_statement (a_document: TOMELLE_DOCUMENT; a_current_table: TOMELLE_TABLE; a_section: STRING_32;
+        a_statement: TOMELLE_KEY_VALUE_STATEMENT; a_source: STRING_32)
         local
             l_result: TOMELLE_VALUE_PARSE_RESULT
+            l_key: TOMELLE_KEY
+            l_entry: TOMELLE_ENTRY
         do
-            l_result := value_parser.parse_result (a_statement.value_text)
+            l_result := value_parser.parse_result (a_statement.source_value_text)
             if attached l_result.value as v then
                 put_value (a_current_table, a_section, a_statement.key_expression, v,
                     a_statement.position.line)
+                if not errors.has_error then
+                    create l_key.make_parsed (a_statement.key_expression, a_statement.key_expression, " = ")
+                    create l_entry.make_parsed (l_key, v, a_source, a_statement.source_value_text)
+                    a_document.append_item (l_entry)
+                end
             else
                 errors.add (l_result.error_code, l_result.message, Void,
                     a_statement.position.line, a_statement.value_column + l_result.error_column - 1)
@@ -143,15 +169,19 @@ feature {NONE} -- Tree navigation
             from i := 1 until i > l_path.count or else not l_valid loop
                 l_value := l_table [l_path [i]]
                 if attached l_value as v then
-                    if v.is_table then l_table := v.as_table
-                    elseif v.is_array and then definitions.is_array (canonical_prefix (a_expression, i)) and then
-                        not v.as_array.is_empty and then v.as_array.last.is_table
-                    then l_table := v.as_array.last.as_table
+                    if attached {TOMELLE_TABLE} v as l_existing_table then
+                        l_table := l_existing_table
+                    elseif attached {TOMELLE_ARRAY} v as l_existing_array and then
+                        definitions.is_array (canonical_prefix (a_expression, i)) and then
+                        not l_existing_array.is_empty and then
+                        attached {TOMELLE_TABLE} l_existing_array.last as l_last_table
+                    then
+                        l_table := l_last_table
                     else l_valid := False end
                 else
                     create l_new_table.make
                     l_table.put_table (l_new_table, l_path [i])
-                    check attached l_table [l_path [i]] as l_stored then l_table := l_stored.as_table end
+                    check attached {TOMELLE_TABLE} l_table [l_path [i]] as l_stored then l_table := l_stored end
                 end
                 i := i + 1
             end
@@ -173,26 +203,34 @@ feature {NONE} -- Tree navigation
             from i := 1 until i >= l_path.count or else not l_valid loop
                 l_value := l_table [l_path [i]]
                 if attached l_value as v then
-                    if v.is_table then l_table := v.as_table
-                    elseif v.is_array and then definitions.is_array (canonical_prefix (a_expression, i)) and then
-                        not v.as_array.is_empty and then v.as_array.last.is_table
-                    then l_table := v.as_array.last.as_table
+                    if attached {TOMELLE_TABLE} v as l_existing_table then
+                        l_table := l_existing_table
+                    elseif attached {TOMELLE_ARRAY} v as l_existing_array and then
+                        definitions.is_array (canonical_prefix (a_expression, i)) and then
+                        not l_existing_array.is_empty and then
+                        attached {TOMELLE_TABLE} l_existing_array.last as l_last_table
+                    then
+                        l_table := l_last_table
                     else l_valid := False end
                 else
                     create l_new_table.make
                     l_table.put_table (l_new_table, l_path [i])
-                    check attached l_table [l_path [i]] as l_stored then l_table := l_stored.as_table end
+                    check attached {TOMELLE_TABLE} l_table [l_path [i]] as l_stored then l_table := l_stored end
                 end
                 i := i + 1
             end
             if l_valid then
                 l_value := l_table [l_path [l_path.count]]
                 if attached l_value as v then
-                    if v.is_array and then definitions.is_array (canonical_expression (a_expression)) then Result := v.as_array end
+                    if attached {TOMELLE_ARRAY} v as l_existing_array and then
+                        definitions.is_array (canonical_expression (a_expression))
+                    then
+                        Result := l_existing_array
+                    end
                 else
                     create l_array.make
                     l_table.put_array (l_array, l_path [l_path.count])
-                    check attached l_table [l_path [l_path.count]] as l_stored then Result := l_stored.as_array end
+                    check attached {TOMELLE_ARRAY} l_table [l_path [l_path.count]] as l_stored then Result := l_stored end
                 end
             end
         end
@@ -216,7 +254,7 @@ feature {NONE} -- Definition validation
             elseif model_builder.can_put (a_root, l_path) then
                 model_builder.put_owned (a_root, a_value, l_path)
                 mark_dotted_tables (a_section, l_expression)
-                if a_value.is_table then
+                if attached {TOMELLE_TABLE} a_value then
                     definitions.mark_sealed (canonical_joined_prefix (a_section, l_expression,
                         joined_path_count (a_section, l_expression)))
                 end

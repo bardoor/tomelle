@@ -10,9 +10,7 @@ create
 feature {NONE} -- Initialization
 
     make
-        do
-            create value_factory.make
-        end
+        do end
 
 feature -- Parsing
 
@@ -23,19 +21,20 @@ feature -- Parsing
             if valid_numeric_underscores (l_text) then
                 l_text.replace_substring_all ("_", "")
                 if l_text.same_string ("inf") or l_text.same_string ("+inf") then
-                    Result := value_factory.new_float ((0.0).positive_infinity)
+                    create {TOMELLE_FLOAT} Result.make_parsed ((0.0).positive_infinity, "inf", a_source)
                 elseif l_text.same_string ("-inf") then
-                    Result := value_factory.new_float ((0.0).negative_infinity)
+                    create {TOMELLE_FLOAT} Result.make_parsed ((0.0).negative_infinity, "-inf", a_source)
                 elseif l_text.same_string ("nan") or l_text.same_string ("+nan") then
-                    Result := value_factory.new_float ((0.0).nan)
+                    create {TOMELLE_FLOAT} Result.make_parsed ((0.0).nan, "nan", a_source)
                 elseif l_text.same_string ("-nan") then
-                    Result := value_factory.new_float (-(0.0).nan)
+                    create {TOMELLE_FLOAT} Result.make_parsed (-(0.0).nan, "nan", a_source)
                 elseif is_based_integer (l_text) and then is_based_integer_in_range (l_text) then
-                    Result := value_factory.new_integer (based_integer (l_text))
+                    create {TOMELLE_INTEGER} Result.make_parsed (based_integer (l_text), a_source)
                 elseif is_decimal_integer (l_text) and then l_text.is_integer_64 then
-                    Result := value_factory.new_integer (l_text.to_integer_64)
+                    create {TOMELLE_INTEGER} Result.make_parsed (l_text.to_integer_64, a_source)
                 elseif is_decimal_float (l_text) and then l_text.is_real_64 then
-                    Result := value_factory.new_float_from_text (l_text)
+                    create {TOMELLE_FLOAT} Result.make_parsed (l_text.to_real_64,
+                        float_codec.canonical_source (l_text), a_source)
                 end
             end
         end
@@ -194,6 +193,6 @@ feature {NONE} -- Formats
             from i := 1 until i > a_text.count or else not Result loop Result := a_text [i].is_digit; i := i + 1 end
         end
 
-    value_factory: TOMELLE_VALUE_FACTORY
+    float_codec: TOMELLE_FLOAT_CODEC once create Result end
 
 end
